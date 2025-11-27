@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Modificaciones</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Modificar Data y Gestiones</h2>
+
+    <!-- Pantalla de Selección de Gestión -->
+    <div id="modification-selector-screen" class="max-w-xl mx-auto card p-8 text-center">
+        <h3 id="modification-greeting" class="text-2xl font-bold text-gray-800 mb-2"></h3>
+        <p class="text-gray-600 mb-6">¿Qué deseas modificar o gestionar hoy?</p>
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+            <select id="modification-select" class="w-full p-3 border rounded-md">
+                <option value="usuarios">Modificar Colaborador</option>
+                <option value="docentes">Modificar Docente</option>
+                <option value="alumnos">Modificar Alumno</option>
+                <option value="aulas">Modificar Aula</option>
+                <option value="revertir">Revertir Última Gestión de Alumno</option>
+            </select>
+            <button id="continue-btn" class="btn-primary font-semibold py-3 px-6 rounded-md w-full sm:w-auto whitespace-nowrap">Continuar</button>
+        </div>
+    </div>
+
+    <!-- Contenedor para las Vistas de Modificación -->
+    <div id="modification-views-container" class="hidden">
+        
+        <button id="back-to-selector-btn" class="mb-6 text-sm text-gray-600 hover:text-red-700 font-semibold">
+            <i class="fas fa-arrow-left mr-2"></i>Volver a la selección
+        </button>
+
+        <div id="view-usuarios" class="modification-view hidden">
+            <input type="text" id="search-usuarios" placeholder="Buscar Colaborador por Nombre, DNI o Email..." class="w-full p-3 border border-gray-300 rounded-lg shadow-sm mb-6">
+            <div id="results-usuarios" class="space-y-4"></div>
+        </div>
+        <div id="view-docentes" class="modification-view hidden">
+            <input type="text" id="search-docentes" placeholder="Buscar Docente por Nombre, DNI o Email..." class="w-full p-3 border border-gray-300 rounded-lg shadow-sm mb-6">
+            <div id="results-docentes" class="space-y-4"></div>
+        </div>
+        <div id="view-alumnos" class="modification-view hidden">
+            <input type="text" id="search-alumnos" placeholder="Buscar Alumno por Nombre o DNI..." class="w-full p-3 border border-gray-300 rounded-lg shadow-sm mb-6">
+            <div id="results-alumnos" class="space-y-4"></div>
+        </div>
+        <div id="view-aulas" class="modification-view hidden">
+             <input type="text" id="search-aulas" placeholder="Buscar Aula por Código o Docente..." class="w-full p-3 border border-gray-300 rounded-lg shadow-sm mb-6">
+            <div id="results-aulas" class="space-y-4"></div>
+        </div>
+        <div id="view-revertir" class="modification-view hidden">
+            <input type="text" id="search-revertir" placeholder="Buscar Alumno Activo por Nombre o DNI para revertir gestión..." class="w-full p-3 border border-gray-300 rounded-lg shadow-sm mb-6">
+            <div id="results-revertir" class="space-y-4"></div>
+        </div>
+    </div>
+
+
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="card p-8 rounded-lg w-full max-w-lg max-h-[90vh] flex flex-col">
+            <h3 id="edit-modal-title" class="text-2xl font-bold mb-6">Editar Registro</h3>
+            <div id="edit-form-container" class="overflow-y-auto"></div>
+        </div>
+    </div>
+    
+    <!-- Modal de Reversión -->
+    <div id="revert-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="card p-8 rounded-lg w-full max-w-lg">
+            <h3 class="text-2xl font-bold mb-4 text-orange-600">Revertir Última Gestión</h3>
+            <div id="revert-details-container">
+                <p class="text-gray-600 mb-4">Se ha encontrado la siguiente gestión pendiente para el alumno. Al confirmar, esta acción será anulada y el alumno volverá al estado 'Pendiente' en la cartera de cobranza.</p>
+                <div id="revert-info" class="p-4 bg-orange-50 border border-orange-200 rounded-md space-y-2"></div>
+            </div>
+             <div id="revert-no-action" class="hidden text-center">
+                <i class="fas fa-info-circle text-4xl text-gray-400 mb-4"></i>
+                <p class="font-semibold">No se encontraron gestiones pendientes de "Renovación" o "Traslado por Cobro" para este alumno que puedan ser revertidas.</p>
+            </div>
+            <div class="flex justify-end space-x-4 mt-6">
+                <button type="button" id="cancel-revert-btn" class="bg-gray-200 py-2 px-4 rounded-md">Cancelar</button>
+                <button type="button" id="confirm-revert-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-md">Confirmar Reversión</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, Timestamp, addDoc, writeBatch, runTransaction, orderBy, limit, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+            authDomain: "bdv3-ipch.firebaseapp.com",
+            projectId: "bdv3-ipch",
+            storageBucket: "bdv3-ipch.firebasestorage.app",
+            messagingSenderId: "993842726107",
+            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        function safeToDate(firestoreTimestamp) {
+            if (!firestoreTimestamp) return null;
+            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
+            if (typeof firestoreTimestamp === 'string') {
+                const date = new Date(firestoreTimestamp);
+                if (!isNaN(date)) return date;
+            }
+            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
+            return null;
+        }
+
+        function showNotification(message, type = 'success', duration = 5000) {
+            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+        }
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const confirmId = Math.random().toString(36).substring(2, 15);
+                const listener = (event) => {
+                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
+                        window.removeEventListener('message', listener);
+                        resolve(event.data.result);
+                    }
+                };
+                window.addEventListener('message', listener);
+                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const selectorScreen = document.getElementById('modification-selector-screen');
+            const viewsContainer = document.getElementById('modification-views-container');
+            const modificationSelect = document.getElementById('modification-select');
+            const continueBtn = document.getElementById('continue-btn');
+            const backToSelectorBtn = document.getElementById('back-to-selector-btn');
+
+            const modal = document.getElementById('edit-modal');
+            const modalTitle = document.getElementById('edit-modal-title');
+            const formContainer = document.getElementById('edit-form-container');
+            const revertModal = document.getElementById('revert-modal');
+            
+            let dataCache = {
+                usuarios: [], docentes: [], alumnos: [], aulas: [], 
+                historialAlumnos: [], trasladosPendientes: []
+            };
+            let originalDataForLog = {};
+            let originalNameForSync = '';
+            
+            const currentUserEmail = new URLSearchParams(window.location.search).get('user') || 'sistema@sgi.com';
+            const userName = new URLSearchParams(window.location.search).get('userName') || 'Colaborador';
+            document.getElementById('modification-greeting').textContent = `Hola, ${userName.split(' ')[0]}!`;
+
+            async function logAction(action, description) {
+                try {
+                    await addDoc(collection(db, 'historialCambios'), {
+                        fecha: Timestamp.now(), usuario: currentUserEmail, accion: action, descripcion: description
+                    });
+                } catch (error) { console.error("Error logging action:", error); }
+            }
+
+            // --- Lógica de UI Principal ---
+            function showView(viewName) {
+                selectorScreen.classList.add('hidden');
+                viewsContainer.classList.remove('hidden');
+                document.querySelectorAll('.modification-view').forEach(view => {
+                    view.classList.toggle('hidden', view.id !== `view-${viewName}`);
+                });
+            }
+
+            function showSelector() {
+                viewsContainer.classList.add('hidden');
+                selectorScreen.classList.remove('hidden');
+                // Limpiar búsquedas al volver
+                document.querySelectorAll('.modification-view input[type="text"]').forEach(input => input.value = '');
+                document.querySelectorAll('[id^="results-"]').forEach(container => container.innerHTML = '');
+            }
+
+            continueBtn.addEventListener('click', () => showView(modificationSelect.value));
+            backToSelectorBtn.addEventListener('click', showSelector);
+
+            // --- Lógica de Búsqueda Genérica ---
+            function setupSearch(collectionName, searchInputId, resultsContainerId) {
+                const searchInput = document.getElementById(searchInputId);
+                const resultsContainer = document.getElementById(resultsContainerId);
+                let searchTimeout;
+
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(searchTimeout);
+                    const term = searchInput.value.trim().toLowerCase();
+                    resultsContainer.innerHTML = '';
+                    if (term.length < 3) return;
+
+                    searchTimeout = setTimeout(() => {
+                        const dataSource = collectionName === 'revertir' ? dataCache.alumnos : dataCache[collectionName];
+                        
+                        const results = dataSource.filter(item => {
+                            if (collectionName === 'revertir') return item.estado === 'Activo' && (item.nombreCompleto.toLowerCase().includes(term) || (item.documentoIdentidad && item.documentoIdentidad.includes(term)));
+                            const fields = {
+                                usuarios: ['nombreCompleto', 'email', 'documentoIdentidad'],
+                                docentes: ['nombreCompleto', 'documentoIdentidad', 'email'],
+                                alumnos: ['nombreCompleto', 'documentoIdentidad'],
+                                aulas: ['codigoAula', 'nombreDocente', 'docenteApoyo']
+                            };
+                            return fields[collectionName].some(field => item[field] && String(item[field]).toLowerCase().includes(term));
+                        });
+                        
+                        if (results.length === 0) {
+                            resultsContainer.innerHTML = '<p class="text-gray-500 text-center p-4">No se encontraron resultados.</p>';
+                            return;
+                        }
+
+                        results.forEach(item => {
+                            const card = document.createElement('div');
+                            card.className = 'card p-4 flex justify-between items-center';
+                            
+                            let content = '';
+                            if (collectionName === 'usuarios') {
+                                content = `<div><p class="font-bold">${item.nombreCompleto}</p><p class="text-sm text-gray-500">${item.email} - Rol: ${item.rol || 'No asignado'}</p></div>
+                                <div class="flex items-center gap-2">
+                                    <button data-id="${item.id}" data-collection="usuarios" class="edit-btn btn-primary py-1 px-3 rounded-md text-sm">Editar</button>
+                                    <button data-email="${item.email}" class="reset-password-btn bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-sm">Resetear Contraseña</button>
+                                </div>`;
+                            } else if (collectionName === 'revertir') {
+                                content = `<div><p class="font-bold">${item.nombreCompleto}</p><p class="text-sm text-gray-500">${item.aulaActual || ''}</p></div>
+                                <button data-id="${item.id}" class="revert-btn bg-orange-500 hover:bg-orange-600 text-white font-semibold py-1 px-3 rounded-md text-sm">Revertir Gestión</button>`;
+                            } else {
+                                const mainField = item.nombreCompleto || item.codigoAula;
+                                const subField = item.email || item.nombreDocente;
+                                let finalCollectionName = collectionName === 'revertir' ? 'alumnos' : collectionName;
+                                content = `<div><p class="font-bold">${mainField}</p><p class="text-sm text-gray-500">${subField || ''}</p></div>
+                                <button data-id="${item.id}" data-collection="${finalCollectionName}" class="edit-btn btn-primary py-1 px-3 rounded-md text-sm">Editar</button>`;
+                            }
+                            card.innerHTML = content;
+                            resultsContainer.appendChild(card);
+                        });
+                    }, 300);
+                });
+            }
+
+            setupSearch('usuarios', 'search-usuarios', 'results-usuarios');
+            setupSearch('docentes', 'search-docentes', 'results-docentes');
+            setupSearch('alumnos', 'search-alumnos', 'results-alumnos');
+            setupSearch('aulas', 'search-aulas', 'results-aulas');
+            setupSearch('revertir', 'search-revertir', 'results-revertir');
+
+            // --- Lógica de Acciones (Editar, Resetear, Revertir) ---
+            document.body.addEventListener('click', async (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                const { id, collection, email } = button.dataset;
+                const finalCollection = collection === 'revertir' ? 'alumnos' : collection;
+
+                if (button.classList.contains('edit-btn')) {
+                    const record = dataCache[finalCollection].find(item => item.id === id);
+                    if(record) openEditModal(finalCollection, id, record);
+                } else if (button.classList.contains('reset-password-btn')) {
+                    const confirmed = await customConfirm(`¿Enviar correo de restablecimiento de contraseña a ${email}?`);
+                    if (confirmed) {
+                         try {
+                            await sendPasswordResetEmail(auth, email);
+                            showNotification(`Correo de reseteo enviado a ${email}.`, 'success');
+                            await logAction('Reseteo de Contraseña', `Se envió correo para resetear la contraseña del usuario: ${email}`);
+                        } catch (error) {
+                            showNotification(`Error: ${error.message}`, 'error');
+                        }
+                    }
+                } else if (button.classList.contains('revert-btn')) {
+                    const alumno = dataCache.alumnos.find(item => item.id === id);
+                    if(alumno) openRevertModal(alumno);
+                }
+            });
+
+            function setupAulaEditForm(data) {
+                const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+                const container = document.getElementById('frecuencia-container-edit');
+                const currentFrecuencia = data.frecuencia ? data.frecuencia.split(', ') : [];
+                container.innerHTML = '';
+                dias.forEach(dia => {
+                    const isChecked = currentFrecuencia.includes(dia);
+                    const label = document.createElement('label');
+                    label.className = `flex items-center justify-center p-2 border rounded-md cursor-pointer has-[:checked]:bg-red-600 has-[:checked]:text-white transition-colors`;
+                    label.innerHTML = `<input type="checkbox" name="frecuencia_dia" value="${dia}" class="hidden" ${isChecked ? 'checked' : ''}><span>${dia}</span>`;
+                    container.appendChild(label);
+                });
+
+                const hourSelects = [document.getElementById('start-hour-edit'), document.getElementById('end-hour-edit')];
+                const minuteSelects = [document.getElementById('start-minute-edit'), document.getElementById('end-minute-edit')];
+                const ampmSelects = [document.getElementById('start-ampm-edit'), document.getElementById('end-ampm-edit')];
+                
+                hourSelects.forEach(s => {s.innerHTML = ''; for(let i=1; i<=12; i++) s.innerHTML += `<option value="${i.toString().padStart(2,'0')}">${i.toString().padStart(2,'0')}</option>`; });
+                minuteSelects.forEach(s => {s.innerHTML = ''; for(let i=0; i<60; i+=5) s.innerHTML += `<option value="${i.toString().padStart(2,'0')}">${i.toString().padStart(2,'0')}</option>`; });
+
+                if (data.horario && data.horario.includes(' - ')) {
+                    const parts = data.horario.split(' - ');
+                    const [start, end] = [parts[0], parts[1]];
+                    const startMatch = start.match(/(\d+):(\d+) (AM|PM)/);
+                    const endMatch = end.match(/(\d+):(\d+) (AM|PM)/);
+                    if (startMatch) {
+                        hourSelects[0].value = startMatch[1]; minuteSelects[0].value = startMatch[2]; ampmSelects[0].value = startMatch[3];
+                    }
+                    if (endMatch) {
+                        hourSelects[1].value = endMatch[1]; minuteSelects[1].value = endMatch[2]; ampmSelects[1].value = endMatch[3];
+                    }
+                }
+            }
+
+            async function openEditModal(collectionName, id, data) {
+                modalTitle.textContent = `Editar ${collectionName.slice(0, -1)}`;
+                originalNameForSync = data.nombreCompleto || '';
+                originalDataForLog = data;
+
+                let formHTML = `<form id="edit-form" data-id="${id}" data-collection="${collectionName}" class="space-y-4">`;
+                
+                const createField = (key, value, type = 'text', options = [], customLabel = '') => {
+                    const labelText = customLabel || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    const label = `<label class="block text-sm font-medium text-gray-700">${labelText}</label>`;
+                    let fieldHTML = '';
+                    switch(type) {
+                        case 'readonly': fieldHTML = `<p class="w-full p-2 mt-1 bg-gray-100 border rounded-md text-gray-500">${value || '---'}</p>`; break;
+                        case 'select': fieldHTML = `<select name="${key}" class="w-full p-2 mt-1 border rounded">${options.map(o => `<option value="${o}" ${o === value ? 'selected' : ''}>${o || 'Ninguno'}</option>`).join('')}</select>`; break;
+                        case 'date':
+                            const date = safeToDate(value);
+                            const dateValue = date ? date.toISOString().split('T')[0] : '';
+                            fieldHTML = `<input type="date" name="${key}" value="${dateValue}" class="w-full p-2 mt-1 border rounded">`; break;
+                        case 'phone':
+                             const [prefix, number] = (value || '+51 ').split(/ (.*)/s);
+                             fieldHTML = `<div class="flex">
+                                <select name="prefijo" class="p-2 border rounded-l-md bg-gray-50 border-r-0">
+                                    <option value="+51" ${prefix === '+51' ? 'selected' : ''}>🇵🇪 +51</option>
+                                    <option value="+58" ${prefix === '+58' ? 'selected' : ''}>🇻🇪 +58</option>
+                                    <option value="+57" ${prefix === '+57' ? 'selected' : ''}>🇨🇴 +57</option>
+                                    <option value="+52" ${prefix === '+52' ? 'selected' : ''}>🇲🇽 +52</option>
+                                    <option value="+1" ${prefix === '+1' ? 'selected' : ''}>🇺🇸 +1</option>
+                                    <option value="+34" ${prefix === '+34' ? 'selected' : ''}>🇪🇸 +34</option>
+                                    <option value="+54" ${prefix === '+54' ? 'selected' : ''}>🇦🇷 +54</option>
+                                </select>
+                                <input type="tel" name="telefono_num" placeholder="Teléfono" value="${number || ''}" class="w-full p-2 border rounded-r-md">
+                            </div>`;
+                            break;
+                        default: fieldHTML = `<input type="text" name="${key}" value="${value || ''}" class="w-full p-2 mt-1 border rounded">`;
+                    }
+                    return `<div>${label}${fieldHTML}</div>`;
+                };
+
+                const docTypes = ["DNI", "RUC", "Pasaporte", "C.E.", "Cédula"];
+                if (collectionName === 'usuarios') {
+                    formHTML += createField('nombreCompleto', data.nombreCompleto);
+                    formHTML += createField('email', data.email, 'readonly');
+                    const roles = ['Director Marketing', 'Soporte Académico', 'Cobranzas', 'Atención Estudiantil', 'Administración y Presidencia', 'Coordinación Académica', 'Dirección Académica', 'Diseño', 'Recursos Humanos', 'Calidad', 'Inscripciones'];
+                    formHTML += createField('rol', data.rol, 'select', roles);
+                    formHTML += createField('tipoDocumento', data.tipoDocumento, 'select', docTypes);
+                    formHTML += createField('documentoIdentidad', data.documentoIdentidad);
+                    formHTML += createField('telefono', data.telefono, 'phone');
+                } else if (collectionName === 'alumnos') {
+                     formHTML += createField('nombreCompleto', data.nombreCompleto);
+                    formHTML += createField('tipoDocumento', data.tipoDocumento, 'select', docTypes);
+                    formHTML += createField('documentoIdentidad', data.documentoIdentidad);
+                    formHTML += createField('telefono', data.telefono, 'phone');
+                    formHTML += createField('email', data.email);
+                    formHTML += createField('estado', data.estado, 'readonly');
+                    formHTML += createField('aulaActual', data.aulaActual, 'readonly');
+                } else if (collectionName === 'aulas') {
+                    formHTML += createField('codigoAula', data.codigoAula);
+                    const docentes = dataCache.docentes.map(d => d.nombreCompleto).sort();
+                    formHTML += createField('nombreDocente', data.nombreDocente, 'select', docentes, 'Docente Principal');
+                    const docentesApoyoOptions = [''].concat(docentes);
+                    formHTML += createField('docenteApoyo', data.docenteApoyo, 'select', docentesApoyoOptions, 'Docente de Apoyo (Opcional)');
+                    formHTML += `<div><label class="text-sm font-medium text-gray-700">Frecuencia</label><div id="frecuencia-container-edit" class="grid grid-cols-4 gap-2 mt-2"></div></div>`;
+                    formHTML += `<div><label class="text-sm font-medium text-gray-700">Horario</label><div class="grid grid-cols-2 gap-4 mt-2"><div><label class="text-xs">De:</label><div class="flex items-center gap-1"><select id="start-hour-edit" class="w-full p-2 border rounded"></select><select id="start-minute-edit" class="w-full p-2 border rounded"></select><select id="start-ampm-edit" class="w-full p-2 border rounded"><option>AM</option><option>PM</option></select></div></div><div><label class="text-xs">A:</label><div class="flex items-center gap-1"><select id="end-hour-edit" class="w-full p-2 border rounded"></select><select id="end-minute-edit" class="w-full p-2 border rounded"></select><select id="end-ampm-edit" class="w-full p-2 border rounded"><option>AM</option><option>PM</option></select></div></div></div></div>`;
+                    formHTML += createField('fechaInicio', data.fechaInicio, 'date');
+                    formHTML += createField('fechaFin', data.fechaFin, 'date');
+                    formHTML += createField('estado', data.estado, 'select', ['Programada', 'En Curso', 'En Cobranza', 'Cerrada']);
+                    formHTML += createField('cantidadAlumnos', data.cantidadAlumnos, 'readonly');
+                } else { // Docentes
+                    formHTML += createField('nombreCompleto', data.nombreCompleto);
+                    formHTML += createField('tipoDocumento', data.tipoDocumento, 'select', docTypes);
+                    formHTML += createField('documentoIdentidad', data.documentoIdentidad);
+                    formHTML += createField('telefono', data.telefono, 'phone');
+                    formHTML += createField('email', data.email);
+                }
+
+                formHTML += `<div class="flex justify-end space-x-4 mt-8"><button type="button" id="cancel-edit-btn" class="bg-gray-200 py-2 px-4 rounded-md">Cancelar</button><button type="submit" class="btn-primary py-2 px-4 rounded-md">Guardar Cambios</button></div></form>`;
+                formContainer.innerHTML = formHTML;
+                
+                if (collectionName === 'aulas') {
+                    setupAulaEditForm(data);
+                }
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.getElementById('cancel-edit-btn').addEventListener('click', () => modal.classList.add('hidden'));
+                document.getElementById('edit-form').addEventListener('submit', handleUpdate);
+            }
+            
+            async function handleUpdate(e) {
+                e.preventDefault();
+                const form = e.target;
+                const id = form.dataset.id;
+                const collectionName = form.dataset.collection;
+                const formData = new FormData(form);
+                const updatePayload = {};
+                
+                formData.forEach((value, key) => { updatePayload[key] = value; });
+
+                if(updatePayload.prefijo || updatePayload.telefono_num) {
+                    updatePayload.telefono = `${updatePayload.prefijo || '+51'} ${updatePayload.telefono_num || ''}`.trim();
+                    delete updatePayload.prefijo;
+                    delete updatePayload.telefono_num;
+                }
+
+                if(collectionName === 'aulas'){
+                    const diasSeleccionados = Array.from(form.querySelectorAll('input[name="frecuencia_dia"]:checked')).map(cb => cb.value);
+                    updatePayload.frecuencia = diasSeleccionados.join(', ');
+                    
+                    updatePayload.horario = `${document.getElementById('start-hour-edit').value}:${document.getElementById('start-minute-edit').value} ${document.getElementById('start-ampm-edit').value} - ${document.getElementById('end-hour-edit').value}:${document.getElementById('end-minute-edit').value} ${document.getElementById('end-ampm-edit').value}`;
+                    
+                    if (updatePayload.fechaInicio) updatePayload.fechaInicio = Timestamp.fromDate(new Date(updatePayload.fechaInicio + 'T00:00:00'));
+                    if (updatePayload.fechaFin) updatePayload.fechaFin = Timestamp.fromDate(new Date(updatePayload.fechaFin + 'T00:00:00'));
+
+                    delete updatePayload.frecuencia_dia;
+                }
+
+
+                try {
+                    const docRef = (collectionName === 'usuarios') ? doc(db, collectionName, originalDataForLog.email) : doc(db, collectionName, id);
+                    await updateDoc(docRef, updatePayload);
+                    
+                    showNotification('¡Registro actualizado!', 'success');
+                    modal.classList.add('hidden');
+                    const currentView = document.querySelector('.modification-view:not(.hidden)');
+                    if(currentView) {
+                        currentView.querySelector('input[type="text"]').dispatchEvent(new Event('input'));
+                    }
+                } catch (error) {
+                    showNotification("Error al actualizar el registro: " + error.message, 'error');
+                }
+            }
+            
+            // --- Lógica de Reversión ---
+            const revertInfoContainer = document.getElementById('revert-info');
+            const revertDetailsContainer = document.getElementById('revert-details-container');
+            const revertNoActionContainer = document.getElementById('revert-no-action');
+            const confirmRevertBtn = document.getElementById('confirm-revert-btn');
+            let selectedStudentForRevert = null;
+            let actionToRevert = null;
+
+            function openRevertModal(alumno) {
+                selectedStudentForRevert = alumno;
+                actionToRevert = null;
+                revertInfoContainer.innerHTML = '<div class="loader"></div>';
+                confirmRevertBtn.style.display = 'none';
+                revertDetailsContainer.style.display = 'block';
+                revertNoActionContainer.classList.add('hidden');
+                revertModal.classList.remove('hidden');
+                revertModal.classList.add('flex');
+
+                const nextCycle = (parseInt(alumno.cicloInscrito) || 0) + 1;
+
+                const trasladoPendiente = dataCache.trasladosPendientes.find(t => t.alumnoId === alumno.id && t.estado === "Pendiente");
+                if (trasladoPendiente) {
+                    actionToRevert = { type: 'Traslado por Cobro', data: trasladoPendiente, id: trasladoPendiente.id };
+                } else {
+                    const renovaciones = dataCache.historialAlumnos
+                        .filter(h => h.alumnoId === alumno.id && h.tipoAccion === "Renovación" && h.detalles.ciclo === nextCycle)
+                        .sort((a, b) => b.fecha.toMillis() - a.fecha.toMillis());
+                    if (renovaciones.length > 0) {
+                        actionToRevert = { type: 'Renovación', data: renovaciones[0], id: renovaciones[0].id };
+                    }
+                }
+
+                if (actionToRevert) {
+                    const d = actionToRevert.data.detalles || actionToRevert.data.paymentDetails || {};
+                    const fechaAccion = safeToDate(actionToRevert.data.fecha || actionToRevert.data.fechaCreacion);
+                    revertInfoContainer.innerHTML = `
+                        <p><strong>Alumno:</strong> ${alumno.nombreCompleto}</p>
+                        <p><strong>Acción a Revertir:</strong> <span class="font-bold text-orange-700">${actionToRevert.type}</span></p>
+                        <p><strong>Fecha Original:</strong> ${fechaAccion ? fechaAccion.toLocaleDateString('es-PE') : 'N/A'}</p>
+                        <p><strong>Monto Pagado Asociado:</strong> S/ ${(d.montoPagado || 0).toFixed(2)}</p>
+                        <p><strong>Destino:</strong> ${d.aulaDestino || actionToRevert.data.aulaOrigen || 'Misma Aula'}</p>
+                    `;
+                    confirmRevertBtn.style.display = 'block';
+                } else {
+                    revertDetailsContainer.style.display = 'none';
+                    revertNoActionContainer.classList.remove('hidden');
+                }
+            }
+            document.getElementById('cancel-revert-btn').addEventListener('click', () => revertModal.classList.add('hidden'));
+            
+            confirmRevertBtn.addEventListener('click', async () => {
+                if (!selectedStudentForRevert || !actionToRevert) return;
+                
+                const confirmed = await customConfirm(`¿Confirmas la anulación de la gestión "${actionToRevert.type}" para ${selectedStudentForRevert.nombreCompleto}?`);
+                if (!confirmed) return;
+
+                confirmRevertBtn.disabled = true;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const studentRef = doc(db, "alumnos", selectedStudentForRevert.id);
+                        const studentDoc = await transaction.get(studentRef);
+                        if (!studentDoc.exists()) throw new Error("Alumno no encontrado para revertir.");
+
+                        const revertDesc = `Anulación manual de '${actionToRevert.type}'.`;
+                        const revertMotivo = 'Corrección administrativa.';
+                        await logAction("Anulación de Gestión", `Se revirtió '${actionToRevert.type}' para ${selectedStudentForRevert.nombreCompleto}.`);
+
+                        if (actionToRevert.type === 'Renovación') {
+                            transaction.delete(doc(db, 'historialAlumnos', actionToRevert.id));
+                        } else if (actionToRevert.type === 'Traslado por Cobro') {
+                            const aulaOrigen = dataCache.aulas.find(a => a.codigoAula === actionToRevert.data.aulaOrigen);
+                            if (aulaOrigen) {
+                                const aulaOrigenRef = doc(db, "aulas", aulaOrigen.id);
+                                const aulaOrigenDoc = await transaction.get(aulaOrigenRef);
+                                if (aulaOrigenDoc.exists()) {
+                                    transaction.update(aulaOrigenRef, { cantidadAlumnos: (aulaOrigenDoc.data().cantidadAlumnos || 0) + 1 });
+                                }
+                            }
+                            
+                            transaction.update(studentRef, { aulaActual: actionToRevert.data.aulaOrigen });
+                            transaction.delete(doc(db, 'trasladosPendientes', actionToRevert.id));
+                            
+                            // También eliminar el historial de pago asociado si existe
+                            const q = query(collection(db, "historialAlumnos"), 
+                                where("alumnoId", "==", selectedStudentForRevert.id), 
+                                where("tipoAccion", "==", "Traslado por Cobro"), 
+                                orderBy("fecha", "desc"), 
+                                limit(1));
+                            const historySnap = await getDocs(q);
+                            if(!historySnap.empty) {
+                                transaction.delete(historySnap.docs[0].ref);
+                            }
+                        }
+                    });
+
+                    showNotification('¡Gestión revertida exitosamente!', 'success');
+                    revertModal.classList.add('hidden');
+                    document.getElementById('search-revertir').dispatchEvent(new Event('input'));
+                } catch (error) {
+                    showNotification(`Error al revertir la gestión: ${error.message}`, 'error');
+                    console.error(error);
+                } finally {
+                    confirmRevertBtn.disabled = false;
+                }
+            });
+
+
+            // --- Listeners en Tiempo Real ---
+            const collectionsToListen = ['usuarios', 'docentes', 'alumnos', 'aulas', 'historialAlumnos', 'trasladosPendientes'];
+            collectionsToListen.forEach(name => {
+                onSnapshot(collection(db, name), s => { 
+                    dataCache[name] = s.docs.map(d => ({id:d.id, ...d.data()})); 
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>

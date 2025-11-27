@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo Calculadora</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Calculadora de Sesiones</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="flex flex-col gap-6">
+            <div class="calc-section card">
+                <h3>Programar Nuevo Calendario Completo</h3>
+                <form id="programForm">
+                    <label for="programType">Selecciona el Programa:</label>
+                    <select id="programType" required>
+                        <option value="" disabled selected>-- Elige un Programa --</option>
+                        <option value="chino_general">Chino General (Jóvenes/Adultos)</option>
+                        <option value="curso_importaciones">Curso de Importaciones 1 Mes</option>
+                        <option value="chino_ninos">Chino para Niños</option>
+                    </select>
+                    <div id="programOptionsContainer" class="hidden-field">
+                        <label for="startDate">Fecha de inicio:</label>
+                        <input type="date" id="startDate" required>
+                        <div id="frequencyContainerProgram">
+                            <label for="frequency">Selecciona la frecuencia:</label>
+                            <select id="frequency" required></select>
+                        </div>
+                        <div id="cycleContainerProgram" class="hidden-field">
+                            <label for="cycle">Selecciona el ciclo:</label>
+                            <select id="cycle">
+                                <option value="" disabled selected>-- Elige Ciclo --</option>
+                                <option value="ciclo1">Ciclo 1</option>
+                                <option value="ciclo2">Ciclo 2</option>
+                                <option value="ciclo3">Ciclo 3</option>
+                                <option value="ciclo4">Ciclo 4</option>
+                                <option value="ciclo5">Ciclo 5</option>
+                                <option value="ciclo6">Ciclo 6</option>
+                                <option value="ciclo7">Ciclo 7</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button id="programBtn" type="submit" class="calc-btn-primary" disabled>Generar Sesiones</button>
+                        <button type="button" id="clearProgramFormBtn" class="calc-btn-secondary">Limpiar</button>
+                    </div>
+                    <div id="programFeedback" class="feedback-message"></div>
+                </form>
+            </div>
+            <div class="calc-section card">
+                <h3>Reprogramar Sesiones (Desde un punto)</h3>
+                <form id="reprogramForm">
+                    <label for="reprogramProgramType">Selecciona el Programa:</label>
+                    <select id="reprogramProgramType" required>
+                        <option value="" disabled selected>-- Elige un Programa --</option>
+                        <option value="chino_general">Chino General (Jóvenes/Adultos)</option>
+                        <option value="curso_importaciones">Curso de Importaciones 1 Mes</option>
+                        <option value="chino_ninos">Chino para Niños</option>
+                    </select>
+                    <div id="reprogramOptionsContainer" class="hidden-field">
+                        <div id="reprogramFrequencyContainer">
+                            <label for="reprogramFrequency">Frecuencia del Calendario:</label>
+                            <select id="reprogramFrequency" required></select>
+                        </div>
+                        <div id="reprogramCycleContainer" class="hidden-field">
+                            <label for="reprogramCycle">Ciclo del Calendario:</label>
+                            <select id="reprogramCycle">
+                                <option value="" disabled selected>-- Elige Ciclo --</option>
+                                <option value="ciclo1">Ciclo 1</option>
+                                <option value="ciclo2">Ciclo 2</option>
+                                <option value="ciclo3">Ciclo 3</option>
+                                <option value="ciclo4">Ciclo 4</option>
+                                <option value="ciclo5">Ciclo 5</option>
+                                <option value="ciclo6">Ciclo 6</option>
+                                <option value="ciclo7">Ciclo 7</option>
+                            </select>
+                        </div>
+                        <label for="reprogramSessionNumber">Número de Sesión a Reprogramar:</label>
+                        <input type="number" id="reprogramSessionNumber" min="1" required placeholder="Ej: 15">
+                        <label for="newDate">Nueva fecha para ESTA sesión:</label>
+                        <input type="date" id="newDate" required>
+                    </div>
+                    <div class="form-actions">
+                        <button id="reprogramBtn" type="submit" class="calc-btn-primary" disabled>Recalcular</button>
+                        <button type="button" id="clearReprogramFormBtn" class="calc-btn-secondary">Limpiar</button>
+                    </div>
+                    <div id="reprogramFeedback" class="feedback-message"></div>
+                </form>
+            </div>
+        </div>
+        <div class="flex flex-col gap-6">
+            <div class="output-block card p-6">
+                <h3 class="font-bold mb-2 flex justify-between items-center">
+                    <span>Listado de Sesiones</span>
+                    <button type="button" class="copy-btn-inline" data-target="resultDiv" title="Copiar">Copiar Ahora</button>
+                </h3>
+                <div id="copyFeedbackResult" class="feedback-message"></div>
+                <div class="result-box" id="resultDiv"></div>
+            </div>
+            <div class="output-block card p-6">
+                <h3 class="font-bold mb-2 flex justify-between items-center">
+                    <span>Fechas de Evaluaciones</span>
+                    <button type="button" class="copy-btn-inline" data-target="evaluationsDiv" title="Copiar">Copiar Ahora</button>
+                </h3>
+                <div id="copyFeedbackEvaluations" class="feedback-message"></div>
+                <div class="result-box" id="evaluationsDiv"></div>
+            </div>
+            <div class="output-block card p-6">
+                <h3 class="font-bold mb-2 flex justify-between items-center">
+                    <span>Días Feriados Omitidos</span>
+                    <button type="button" class="copy-btn-inline" data-target="holidaysDiv" title="Copiar">Copiar Ahora</button>
+                </h3>
+                <div id="copyFeedbackHolidays" class="feedback-message"></div>
+                <div class="result-box" id="holidaysDiv"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Communication helper ---
+        function showNotification(message, type = 'success', duration = 4000) {
+            // Fallback for local testing if window.parent is not listening
+            console.log(`[${type}] ${message}`);
+            try {
+                window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+            } catch(e) {
+                // ignore
+            }
+        }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const feriados = [
+        // --- 2025 ---
+        "2025-01-01", "2025-04-17", "2025-04-18", "2025-04-20", "2025-05-01", 
+        "2025-05-11", "2025-06-07", "2025-06-15", "2025-06-29", "2025-07-23", 
+        "2025-07-28", "2025-07-29", "2025-08-06", "2025-08-30", "2025-10-08", 
+        "2025-11-01", "2025-12-08", "2025-12-09", "2025-12-24", "2025-12-25", 
+        "2025-12-31",
+        // --- 2026 (Actualizado) ---
+        "2026-01-01", "2026-04-02", "2026-04-03", "2026-04-05", "2026-04-12", 
+        "2026-05-01", "2026-05-10", "2026-06-07", "2026-06-21", "2026-06-29", "2026-07-23", 
+        "2026-07-28", "2026-07-29", "2026-08-06", "2026-08-30", "2026-10-08", 
+        "2026-11-01", "2026-12-08", "2026-12-09", "2026-12-24", "2026-12-25", 
+        "2026-12-31"
+    ];
+
+    const feriadosInfo = {
+        // --- 2025 ---
+        "2025-01-01": "Año Nuevo",
+        "2025-04-17": "Jueves Santo",
+        "2025-04-18": "Viernes Santo",
+        "2025-04-20": "Domingo Resurrección",
+        "2025-05-01": "Día del Trabajo",
+        "2025-05-11": "Día de la Madre",
+        "2025-06-07": "Batalla Arica/Día Bandera",
+        "2025-06-15": "Día del Padre",
+        "2025-06-29": "San Pedro y San Pablo",
+        "2025-07-23": "Día Fuerza Aérea",
+        "2025-07-28": "Fiestas Patrias",
+        "2025-07-29": "Fiestas Patrias",
+        "2025-08-06": "Batalla de Junín",
+        "2025-08-30": "Santa Rosa de Lima",
+        "2025-10-08": "Combate de Angamos",
+        "2025-11-01": "Todos los Santos",
+        "2025-12-08": "Inmaculada Concepción",
+        "2025-12-09": "Batalla de Ayacucho",
+        "2025-12-24": "Nochebuena",
+        "2025-12-25": "Navidad",
+        "2025-12-31": "Fin de Año",
+
+        // --- 2026 (Actualizado según tu lista) ---
+        "2026-01-01": "Año Nuevo",
+        "2026-04-02": "Jueves Santo",
+        "2026-04-03": "Viernes Santo",
+        "2026-04-05": "Domingo de Resurrección",
+        "2026-04-12": "Elecciones presidenciales",
+        "2026-05-01": "Día del Trabajo",
+        "2026-05-10": "Día de la Madre",
+        "2026-06-07": "Batalla Arica/Día Bandera",
+        "2026-06-21": "Día del Padre",
+        "2026-06-29": "San Pedro y San Pablo",
+        "2026-07-23": "Día de la Fuerza Aérea",
+        "2026-07-28": "Día de la Independencia",
+        "2026-07-29": "Fiestas Patrias",
+        "2026-08-06": "Batalla de Junín",
+        "2026-08-30": "Santa Rosa de Lima",
+        "2026-10-08": "Combate de Angamos",
+        "2026-11-01": "Todos los Santos",
+        "2026-12-08": "Inmaculada Concepción",
+        "2026-12-09": "Batalla de Ayacucho",
+        "2026-12-24": "Visperas de Navidad",
+        "2026-12-25": "Navidad",
+        "2026-12-31": "Fin de Año"
+    };
+            const evaluaciones = {
+                "chino_general": { 
+                    "ciclo1": { "3": { 7: "Tarea 1", 11: "Práctica Calificada 1 y Examen Oral 1", 14: "Tarea 2", 20: "Tarea 3", 22: "Práctica Calificada 2 y Examen Oral 2", 26: "Tarea 4", 30: "Tarea 5", 35: "Entrega de Proyecto", 36: "Examen Final" }, "2": { 5: "Tarea 1", 8: "Tarea 2", 9: "Práctica Calificada 1 y Examen Oral 1", 13: "Tarea 3", 14: "Práctica Calificada 2 y Examen Oral 2", 17: "Tarea 4", 20: "Tarea 5", 23: "Entrega de Proyecto", 24: "Examen Final" } }, 
+                    "ciclo2": { "3": { 6: "Tarea 1", 12: "Tarea 2", 13: "Práctica Calificada 1 y Examen Oral 1", 19: "Tarea 3", 26: "Tarea 4", 27: "Práctica Calificada 2 y Examen Oral 2", 34: "Tarea 5", 35: "Entrega de Proyecto", 36: "Examen Final" }, "2": { 4: "Tarea 1", 8: "Tarea 2", 9: "Práctica Calificada 1 y Examen Oral 1", 13: "Tarea 3", 17: "Tarea 4", 18: "Práctica Calificada 2 y Examen Oral 2", 22: "Tarea 5", 23: "Entrega de Proyecto", 24: "Examen Final" } }, 
+                    "ciclo3": { "3": { 5: "Tarea 1", 10: "Tarea 2", 13: "Práctica calificada 1 y Examen Oral 1", 17: "Tarea 3", 18: "Explicación del proyecto", 23: "Tarea 4", 27: "Práctica Calificada 2 y Examen Oral 2", 30: "Tarea 5", 35: "Entrega de Proyecto", 36: "Examen Final" }, "2": { 3: "Tarea 1", 7: "Tarea 2", 10: "Práctica calificada 1 y Examen Oral 1", 13: "Tarea 3 y Explicación del proyecto", 18: "Tarea 4", 19: "Práctica Calificada 2 y Examen Oral 2", 23: "Tarea 5 y Entrega de Proyecto", 24: "Examen Final" } }, 
+                    "ciclo4": { "3": { 8: "Tarea 1", 16: "Tarea 2", 17: "Práctica calificada 1 y Examen Oral 1", 25: "Tarea 3", 33: "Tarea 4", 34: "Práctica calificada 2 y Examen Oral 2", 35: "Proyecto", 36: "Examen Final" }, "2": { 5: "Tarea 1", 10: "Tarea 2", 11: "Práctica calificada 1 y Examen Oral 1", 16: "Tarea 3", 21: "Tarea 4", 22: "Práctica calificada 2 y Examen Oral 2", 23: "Proyecto", 24: "Examen Final" } }, 
+                    "ciclo5": { "3": { 8: "Tarea 1", 16: "Tarea 2", 17: "Práctica Calificada 1 y Examen Oral 1", 25: "Tarea 3", 33: "Tarea 4", 34: "Práctica Calificada 2 y Examen Oral 2", 35: "Proyecto", 36: "Examen Final" }, "2": { 5: "Tarea 1", 10: "Tarea 2", 11: "Práctica Calificada 1 y Examen Oral 1", 16: "Tarea 3", 21: "Tarea 4", 22: "Práctica Calificada 2 y Examen Oral 2", 23: "Proyecto", 24: "Examen Final" } }, 
+                    "ciclo6": { "3": { 8: "Tarea 1", 16: "Tarea 2", 17: "Práctica Calificada 1 y Examen Oral 1", 25: "Tarea 3", 33: "Tarea 4", 34: "Práctica Calificada 2 y Examen Oral 2", 35: "Proyecto", 36: "Examen Final" }, "2": { 5: "Tarea 1", 10: "Tarea 2", 11: "Práctica Calificada 1 y Examen Oral 1", 16: "Tarea 3", 21: "Tarea 4", 22: "Práctica Calificada 2 y Examen Oral 2", 23: "Proyecto", 24: "Examen Final" } }, 
+                    "ciclo7": { "3": { 8: "Tarea 1", 16: "Tarea 2", 17: "Practica Calificada y Examen Oral 1", 25: "Tarea 3", 33: "Tarea 4", 34: "Practica Calificada y Examen Oral 2", 35: "Proyecto", 36: "Examen Final" }, "2": { 5: "Tarea 1", 10: "Tarea 2", 11: "Práctica Calificada y Examen Oral 1", 16: "Tarea 3", 21: "Tarea 4", 22: "Práctica Calificada y Examen Oral 2", 23: "Proyecto", 24: "Examen Final" } },
+                    "ciclo8": { "3": { 8: "Tarea 1", 16: "Tarea 2", 17: "Practica Calificada y Examen Oral 1", 25: "Tarea 3", 33: "Tarea 4", 34: "Practica Calificada y Examen Oral 2", 35: "Proyecto", 36: "Examen Final" }, "2": { 5: "Tarea 1", 10: "Tarea 2", 11: "Práctica Calificada y Examen Oral 1", 16: "Tarea 3", 21: "Tarea 4", 22: "Práctica Calificada y Examen Oral 2", 23: "Proyecto", 24: "Examen Final" } }
+                },
+                "curso_importaciones": { 
+                    "2_lm": { 2: "Tarea en Casa", 5: "Practica Calificada", 8: "Proyecto Final" }, 
+                    "2_mj": { 2: "Tarea en Casa", 5: "Practica Calificada", 8: "Proyecto Final" }, 
+                    "2_sd": { 2: "Tarea en Casa", 5: "Practica Calificada", 8: "Proyecto Final" } 
+                },
+                "chino_ninos": { 
+                    "ciclo1": { "3": { 1: "Tarea 1", 2: "Tareas 2 y 3", 3: "Tarea 4", 4: "Tarea 5", 5: "Tareas 6 y 7", 6: "Tarea 8", 8: "Tarea 9", 9: "Canción 1", 10: "Día de Película", 11: "Tareas 10 y 11", 12: "Tareas 12 y 13", 13: "Tareas 14 y 15", 14: "Tarea 16", 19: "Práctica Calificada", 20: "Canción 2", 21: "Día de Película", 22: "Tarea 17", 23: "Tarea 18", 24: "Tarea 19", 25: "Tarea 20", 27: "Tareas 21", 28: "Tareas 22 y 23", 30: "Día de Película", 31: "Entrega del Proyecto", 32: "Examen Final" }, "2": { 1: "Tareas 1 y 2", 2: "Tareas 3 y 4", 3: "Tareas 5 y 6", 4: "Tareas 7 y 8", 5: "Tareas 9 y 10", 6: "Tareas 11 y 12", 7: "Canción 1", 8: "Día de Película", 9: "Tareas 13 y 14", 10: "Tareas 15 y 16", 11: "Práctica Calificada", 12: "Canción 2", 13: "Día de Película", 14: "Tareas 17 y 18", 15: "Tarea 19", 16: "Tarea 20", 17: "Tarea 21", 18: "Tarea 22", 19: "Tarea 23", 22: "Día de Película", 23: "Entrega del Proyecto", 24: "Examen Final" } }, 
+                    "ciclo2": { "3": { 1: "Tareas 1 y 2", 2: "Tareas 3 y 4", 3: "Tarea 5", 4: "Tarea 6", 5: "Tarea 7", 6: "Tarea 8", 7: "Tarea 9", 8: "Tareas 10 y 11", 9: "Canción 1", 10: "Día de Película", 11: "Tareas 12 y 13", 12: "Tareas 14", 13: "Tareas 15 y 16", 14: "Tarea 17", 15: "Tareas 18 y 19", 16: "Tareas 20 y 21", 17: "Tareas 22 y 23", 18: "Tareas 24 y 25", 19: "Práctica Calificada", 20: "Canción 2", 21: "Día de Película", 22: "Tareas 26 y 27", 23: "Tareas 28 y 29", 24: "Tareas 30 y 31", 25: "Tareas 32 y 33", 26: "Tareas 34, 35 y 36", 27: "Tareas 37 y 38", 30: "Día de Película", 31: "Presentación de Proyecto", 32: "Examen Final" }, "2": { 1: "Tareas 1 y 2", 2: "Tareas 3 y 4", 3: "Tareas 5 y Tarea 6", 4: "Tareas 7 y Tarea 8", 5: "Tareas 9 y Tarea 10", 6: "Tareas 11 y Tarea 12", 7: "Canción 1", 8: "Día de Película", 9: "Tareas 13, 14 y 15", 10: "Tareas 16 y 17", 11: "Tareas 18 y 19", 12: "Tareas 20 y 21", 13: "Tareas 22 y 23", 14: "Tareas 24, 25 y 26", 15: "Tareas 27, 28 y 29", 16: "Práctica Calificada", 17: "Canción 2", 18: "Día de Película", 19: "Tareas 30, 31 y 32", 20: "Tareas 33, 34 y 35", 21: "Tareas 36, 37 y 38", 22: "Día de Película", 23: "Presentación de Proyecto", 24: "Examen Final" } },
+                    "ciclo3": { "3": { 4: "Tarea 1", 6: "Tarea 2", 8: "Tarea 3", 13: "Tarea 4", 15: "Tarea 5", 17: "Tarea 6", 18: "Tarea 7", 19: "Práctica Calificada", 24: "Tarea 8", 27: "Tarea 9", 28: "Tarea 10", 29: "Tarea 11", 31: "Presentación de Proyecto", 32: "Examen Final" } },
+                    "ciclo4": { "3": { 4: "Tarea 1", 6: "Tarea 2", 8: "Tarea 3", 13: "Tarea 4", 15: "Tarea 5", 17: "Tarea 6", 18: "Tarea 7", 19: "Práctica Calificada", 24: "Tarea 8", 27: "Tarea 9", 28: "Tarea 10", 29: "Tarea 11", 31: "Presentación de Proyecto", 32: "Examen Final" } }
+                }
+            };
+            function dayNameToNumber(dayName) { const days = { "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6 }; return days[dayName]; }
+            function formatearFecha(dateObj) { if (!(dateObj instanceof Date) || isNaN(dateObj)) return "Fecha inválida"; const dia = String(dateObj.getDate()).padStart(2, '0'); const mes = String(dateObj.getMonth() + 1).padStart(2, '0'); const anio = dateObj.getFullYear(); return `${dia}/${mes}/${anio}`; }
+            function formatearFechaISO(dateObj) { if (!(dateObj instanceof Date) || isNaN(dateObj)) return "Fecha inválida"; const anio = dateObj.getFullYear(); const mes = String(dateObj.getMonth() + 1).padStart(2, '0'); const dia = String(dateObj.getDate()).padStart(2, '0'); return `${anio}-${mes}-${dia}`; }
+            function parseInputDate(dateStr) { if (!dateStr) return null; const dateObj = new Date(dateStr + 'T00:00:00'); return !isNaN(dateObj.getTime()) ? dateObj : null; }
+            function showFeedback(element, message, type = 'info', duration = 5000) { if (!element) return; element.textContent = message; element.className = `feedback-message ${type}`; element.style.display = 'block'; if (duration > 0) { setTimeout(() => { if(element.style.display !== 'none') { element.style.display = 'none'; } }, duration); } }
+            function validarFecha(fechaObj, diasFrecuenciaNum = null) {
+                if (!fechaObj || isNaN(fechaObj)) return { valido: false, mensaje: "Fecha inválida." };
+                const fechaISO = formatearFechaISO(fechaObj);
+                if (feriados.includes(fechaISO)) {
+                    const info = feriadosInfo[fechaISO] ? ` (${feriadosInfo[fechaISO]})` : '';
+                    return { valido: false, mensaje: `La fecha ${formatearFecha(fechaObj)} es un feriado${info}.` };
+                }
+                if (diasFrecuenciaNum && !diasFrecuenciaNum.includes(fechaObj.getDay())) {
+                    return { valido: false, mensaje: `La fecha ${formatearFecha(fechaObj)} no corresponde a la frecuencia seleccionada.` };
+                }
+                return { valido: true, mensaje: "" };
+            }
+            const programTypeSelect = document.getElementById('programType');
+            const reprogramProgramTypeSelect = document.getElementById('reprogramProgramType');
+            const programBtn = document.getElementById("programBtn");
+            const reprogramBtn = document.getElementById("reprogramBtn");
+            const frecuenciaOptionsGeneral = `<option value="" disabled selected>-- Elige Frecuencia --</option><option value="lunes_miercoles_viernes">Lunes, Miércoles y Viernes (3)</option><option value="martes_jueves">Martes y Jueves (2)</option><option value="sabados_domingos">Sábados y Domingos (2)</option>`;
+            const frecuenciaOptionsImportaciones = `<option value="" disabled selected>-- Elige Frecuencia --</option><option value="2_lm">Lunes y Miércoles (2)</option><option value="2_mj">Martes y Jueves (2)</option><option value="2_sd">Sábados y Domingos (2)</option>`;
+            
+            function updateFormOptions(programTypeValue, formType) {
+                const optionsContainer = formType === 'program' ? document.getElementById('programOptionsContainer') : document.getElementById('reprogramOptionsContainer');
+                const cycleContainer = formType === 'program' ? document.getElementById('cycleContainerProgram') : document.getElementById('reprogramCycleContainer');
+                const frequencySelect = formType === 'program' ? document.getElementById('frequency') : document.getElementById('reprogramFrequency');
+                const cycleSelect = formType === 'program' ? document.getElementById('cycle') : document.getElementById('reprogramCycle');
+                const submitBtn = formType === 'program' ? programBtn : reprogramBtn;
+                optionsContainer.classList.remove('hidden-field');
+                cycleContainer.classList.toggle('hidden-field', !(programTypeValue === "chino_general" || programTypeValue === "chino_ninos"));
+                cycleSelect.required = (programTypeValue === "chino_general" || programTypeValue === "chino_ninos");
+                if (programTypeValue === "chino_general") {
+                    frequencySelect.innerHTML = frecuenciaOptionsGeneral;
+                    // --- INICIO DE LA ACTUALIZACIÓN: CICLOS CHINO GENERAL (ACTUALIZADO A 8) ---
+                    cycleSelect.innerHTML = '';
+                    for (let i = 1; i <= 8; i++) { // Cambio: i <= 8 para incluir ciclo 8
+                        cycleSelect.innerHTML += `<option value="ciclo${i}">Ciclo ${i}</option>`;
+                    }
+                    // --- FIN DE LA ACTUALIZACIÓN ---
+                } else if (programTypeValue === "chino_ninos") {
+                    frequencySelect.innerHTML = frecuenciaOptionsGeneral;
+                    // --- INICIO DE LA ACTUALIZACIÓN: CICLOS CHINO NIÑOS ---
+                    cycleSelect.innerHTML = '';
+                    for (let i = 1; i <= 6; i++) {
+                        cycleSelect.innerHTML += `<option value="ciclo${i}">Ciclo ${i}</option>`;
+                    }
+                    // --- FIN DE LA ACTUALIZACIÓN ---
+                }
+                else if (programTypeValue === "curso_importaciones") frequencySelect.innerHTML = frecuenciaOptionsImportaciones;
+                else optionsContainer.classList.add('hidden-field');
+                submitBtn.disabled = !programTypeValue;
+            }
+
+            programTypeSelect.addEventListener('change', function() { updateFormOptions(this.value, 'program'); });
+            reprogramProgramTypeSelect.addEventListener('change', function() { updateFormOptions(this.value, 'reprogram'); });
+            
+            document.getElementById('programForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const programFeedback = document.getElementById('programFeedback');
+                const selectedProgram = programTypeSelect.value;
+                if (!selectedProgram) { showFeedback(programFeedback, "Selecciona un programa.", 'error'); return; }
+                const fechaInicioStr = document.getElementById("startDate").value;
+                const frequencyValue = document.getElementById("frequency").value;
+                const cycleValue = (selectedProgram === "chino_general" || selectedProgram === "chino_ninos") ? document.getElementById("cycle").value : null;
+                let diasFrecuencia = [], totalSesiones = 0, freqModeForEval;
+                if (selectedProgram === "chino_general") {
+                    if (frequencyValue === "lunes_miercoles_viernes") { diasFrecuencia = ["Monday", "Wednesday", "Friday"]; totalSesiones = 36; freqModeForEval = "3"; }
+                    else if (frequencyValue === "martes_jueves") { diasFrecuencia = ["Tuesday", "Thursday"]; totalSesiones = 24; freqModeForEval = "2"; }
+                    else { diasFrecuencia = ["Saturday", "Sunday"]; totalSesiones = 24; freqModeForEval = "2"; }
+                } else if (selectedProgram === "curso_importaciones") {
+                    totalSesiones = 8; freqModeForEval = frequencyValue;
+                    if (frequencyValue === "2_lm") diasFrecuencia = ["Monday", "Wednesday"];
+                    else if (frequencyValue === "2_mj") diasFrecuencia = ["Tuesday", "Thursday"];
+                    else diasFrecuencia = ["Saturday", "Sunday"];
+                } else {
+                    if (frequencyValue === "lunes_miercoles_viernes") { diasFrecuencia = ["Monday", "Wednesday", "Friday"]; totalSesiones = 32; freqModeForEval = "3"; }
+                    else if (frequencyValue === "martes_jueves") { diasFrecuencia = ["Tuesday", "Thursday"]; totalSesiones = 24; freqModeForEval = "2"; }
+                    else { diasFrecuencia = ["Saturday", "Sunday"]; totalSesiones = 24; freqModeForEval = "2"; }
+                }
+                const diasNumericos = diasFrecuencia.map(dayNameToNumber);
+                const fechaInicioObj = parseInputDate(fechaInicioStr);
+                const { valido, mensaje } = validarFecha(fechaInicioObj, diasNumericos);
+                if (!valido) {
+                    showFeedback(programFeedback, `Error en Fecha de Inicio: ${mensaje}`, 'error', 0);
+                    return;
+                }
+                let fechaActual = fechaInicioObj;
+                const sesiones = [], diasSinClase = [];
+                while(sesiones.length < totalSesiones) {
+                    const diaActualNum = fechaActual.getDay();
+                    const fechaActualISO = formatearFechaISO(fechaActual);
+                    if (diasNumericos.includes(diaActualNum)) {
+                        if (feriados.includes(fechaActualISO)) {
+                            if (!diasSinClase.some(d => d.iso === fechaActualISO)) diasSinClase.push({ date: formatearFecha(fechaActual), iso: fechaActualISO });
+                        } else {
+                            sesiones.push({ session: sesiones.length + 1, date: formatearFecha(fechaActual), evaluacion: "" });
+                        }
+                    }
+                    fechaActual.setDate(fechaActual.getDate() + 1);
+                }
+                let evalConfig;
+                if (selectedProgram === 'chino_general' || selectedProgram === 'chino_ninos') evalConfig = evaluaciones[selectedProgram]?.[cycleValue]?.[freqModeForEval];
+                else evalConfig = evaluaciones[selectedProgram]?.[freqModeForEval];
+                if (evalConfig) sesiones.forEach(s => { s.evaluacion = evalConfig[s.session] || ""; });
+                document.getElementById("resultDiv").innerHTML = sesiones.map(s => `<div>• <strong>Sesión ${s.session}:</strong> ${s.date}${s.evaluacion ? ` - ${s.evaluacion}` : ''}</div>`).join('');
+                document.getElementById("evaluationsDiv").innerHTML = sesiones.filter(s => s.evaluacion).map(s => `<div>• <strong>Sesión ${s.session}:</strong> ${s.date} - ${s.evaluacion}</div>`).join('') || "No hay evaluaciones programadas.";
+                document.getElementById("holidaysDiv").innerHTML = diasSinClase.map(d => `<div>• ${d.date} - ${feriadosInfo[d.iso]}</div>`).join('') || "Ningún feriado coincidió.";
+                showFeedback(programFeedback, 'Calendario generado.', 'success');
+            });
+            
+            document.getElementById('reprogramForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const reprogramFeedback = document.getElementById('reprogramFeedback');
+                const selectedProgram = document.getElementById('reprogramProgramType').value;
+                const frequencyValue = document.getElementById('reprogramFrequency').value;
+                const cycleValue = (selectedProgram === "chino_general" || selectedProgram === "chino_ninos") ? document.getElementById("reprogramCycle").value : null;
+                const sessionNumber = parseInt(document.getElementById('reprogramSessionNumber').value);
+                const newDateVal = document.getElementById('newDate').value;
+                let diasFrecuencia = [], totalSesiones = 0, freqModeForEval;
+                if (selectedProgram === "chino_general") {
+                    if (frequencyValue === "lunes_miercoles_viernes") { diasFrecuencia = ["Monday", "Wednesday", "Friday"]; totalSesiones = 36; freqModeForEval = "3"; }
+                    else if (frequencyValue === "martes_jueves") { diasFrecuencia = ["Tuesday", "Thursday"]; totalSesiones = 24; freqModeForEval = "2"; }
+                    else { diasFrecuencia = ["Saturday", "Sunday"]; totalSesiones = 24; freqModeForEval = "2"; }
+                } else if (selectedProgram === "curso_importaciones") {
+                    totalSesiones = 8; freqModeForEval = frequencyValue;
+                    if (frequencyValue === "2_lm") diasFrecuencia = ["Monday", "Wednesday"];
+                    else if (frequencyValue === "2_mj") diasFrecuencia = ["Tuesday", "Thursday"];
+                    else diasFrecuencia = ["Saturday", "Sunday"];
+                } else {
+                    if (frequencyValue === "lunes_miercoles_viernes") { diasFrecuencia = ["Monday", "Wednesday", "Friday"]; totalSesiones = 32; freqModeForEval = "3"; }
+                    else if (frequencyValue === "martes_jueves") { diasFrecuencia = ["Tuesday", "Thursday"]; totalSesiones = 24; freqModeForEval = "2"; }
+                    else { diasFrecuencia = ["Saturday", "Sunday"]; totalSesiones = 24; freqModeForEval = "2"; }
+                }
+
+                const nuevaFechaObj = parseInputDate(newDateVal);
+                const diasNumericos = diasFrecuencia.map(dayNameToNumber);
+                const { valido, mensaje } = validarFecha(nuevaFechaObj, diasNumericos);
+                if (!valido) {
+                    showFeedback(reprogramFeedback, `Error en Nueva Fecha: ${mensaje}`, 'error', 0);
+                    return;
+                }
+
+                let fechaActual = nuevaFechaObj;
+                const recalculatedSessions = [], holidaysSkipped = [];
+                
+                for(let currentSessionNum = sessionNumber; currentSessionNum <= totalSesiones; currentSessionNum++) {
+                    let fechaParaEstaSesion = new Date(fechaActual);
+                    if(currentSessionNum > sessionNumber) {
+                        fechaParaEstaSesion.setDate(fechaParaEstaSesion.getDate() + 1);
+                    }
+                    while(true) {
+                        const diaActualNum = fechaParaEstaSesion.getDay();
+                        const fechaActualISO = formatearFechaISO(fechaParaEstaSesion);
+                        if(diasNumericos.includes(diaActualNum) && !feriados.includes(fechaActualISO)) {
+                            break;
+                        }
+                        if(diasNumericos.includes(diaActualNum) && feriados.includes(fechaActualISO)) {
+                             if (!holidaysSkipped.some(d => d.iso === fechaActualISO)) holidaysSkipped.push({ date: formatearFecha(fechaParaEstaSesion), iso: fechaActualISO });
+                        }
+                        fechaParaEstaSesion.setDate(fechaParaEstaSesion.getDate() + 1);
+                    }
+                    recalculatedSessions.push({ session: currentSessionNum, date: formatearFecha(fechaParaEstaSesion), evaluacion: "" });
+                    fechaActual = fechaParaEstaSesion;
+                }
+
+                let evalConfig;
+                if (selectedProgram === 'chino_general' || selectedProgram === 'chino_ninos') evalConfig = evaluaciones[selectedProgram]?.[cycleValue]?.[freqModeForEval];
+                else evalConfig = evaluaciones[selectedProgram]?.[freqModeForEval];
+                if (evalConfig) recalculatedSessions.forEach(s => { s.evaluacion = evalConfig[s.session] || ""; });
+                
+                document.getElementById("resultDiv").innerHTML = recalculatedSessions.map(s => `<div>• <strong>Sesión ${s.session}:</strong> ${s.date}${s.evaluacion ? ` - ${s.evaluacion}` : ''}</div>`).join('');
+                document.getElementById("evaluationsDiv").innerHTML = recalculatedSessions.filter(s => s.evaluacion).map(s => `<div>• <strong>Sesión ${s.session}:</strong> ${s.date} - ${s.evaluacion}</div>`).join('') || "No hay evaluaciones programadas.";
+                document.getElementById("holidaysDiv").innerHTML = holidaysSkipped.map(d => `<div>• ${d.date} - ${feriadosInfo[d.iso]}</div>`).join('') || "Ningún feriado coincidió.";
+                showFeedback(reprogramFeedback, `Recalculado desde la sesión ${sessionNumber}.`, 'success');
+            });
+
+            document.getElementById('clearProgramFormBtn').addEventListener('click', () => {
+                document.getElementById('programForm').reset();
+                document.getElementById('resultDiv').innerHTML = '';
+                document.getElementById('evaluationsDiv').innerHTML = '';
+                document.getElementById('holidaysDiv').innerHTML = '';
+                document.getElementById('programFeedback').style.display = 'none';
+                updateFormOptions('', 'program');
+            });
+            document.getElementById('clearReprogramFormBtn').addEventListener('click', () => {
+                document.getElementById('reprogramForm').reset();
+                document.getElementById('resultDiv').innerHTML = '';
+                document.getElementById('evaluationsDiv').innerHTML = '';
+                document.getElementById('holidaysDiv').innerHTML = '';
+                document.getElementById('reprogramFeedback').style.display = 'none';
+                updateFormOptions('', 'reprogram');
+            });
+
+            document.querySelectorAll('.copy-btn-inline').forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.dataset.target;
+                    const targetDiv = document.getElementById(targetId);
+                    
+                    const textToCopy = Array.from(targetDiv.children)
+                        .map(child => child.textContent.trim())
+                        .join('\n');
+
+                    if (!textToCopy.trim()) {
+                        showNotification("No hay nada que copiar.", "info");
+                        return;
+                    }
+
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        const originalText = this.textContent;
+                        this.textContent = "¡Copiado!";
+                        this.classList.add('copied');
+
+                        setTimeout(() => {
+                            this.textContent = originalText;
+                            this.classList.remove('copied');
+                        }, 2000);
+                    }).catch(err => {
+                        console.error("Error al copiar: ", err);
+                        showNotification("Error al copiar el texto.", "error");
+                    });
+                });
+            });
+            
+            updateFormOptions('', 'program');
+            updateFormOptions('', 'reprogram');
+        });
+    </script>
+</body>
+</html>

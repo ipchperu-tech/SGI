@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión - v3</title>
+    <link rel="icon" href="https://ipch.net.pe/wp-content/uploads/2025/07/IPCH-VERTICAL-V1-COLOR.png" sizes="any">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Ocultar contenido inicialmente para evitar parpadeo */
+        #login-screen, #app-container {
+            display: none;
+        }
+    </style>
+</head>
+<body class="sgi-main-page">
+    <!-- Mensaje para Móviles -->
+    <div id="mobile-notice">
+        <div class="text-center p-8">
+            <img src="https://ipch.net.pe/wp-content/uploads/2025/07/IPCH-VERTICAL-V1-COLOR.png" alt="Logotipo del Instituto" class="w-32 h-32 mx-auto mb-6" onerror="this.onerror=null; this.src='https://placehold.co/128x128/fee2e2/c80000?text=IPCH';">
+            <h1 class="text-xl font-bold text-gray-800">SGI Optimizado para Escritorio</h1>
+            <p class="mt-4 text-gray-600 max-w-sm mx-auto">
+                El SGI IPCH está hecho para ser usado en <strong>Computadora, Laptop y Tablet.</strong>
+            </p>
+        </div>
+    </div>
+
+    <!-- Preloader de Carga -->
+    <div id="preloader" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+        <div class="text-center">
+            <img src="https://ipch.net.pe/wp-content/uploads/2025/07/IPCH-VERTICAL-V1-COLOR.png" alt="Logotipo del Instituto" class="w-24 h-24 mx-auto logo-spin" onerror="this.onerror=null; this.src='https://placehold.co/96x96/fee2e2/c80000?text=IPCH';">
+            <p class="mt-4 text-gray-600">Cargando SGI v3...</p>
+        </div>
+    </div>
+
+    <div id="login-screen" class="flex items-center justify-center min-h-screen bg-gray-100">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-lg relative">
+            <!-- Banner de Mantenimiento -->
+            <div id="maintenance-banner" class="hidden p-4 mb-4 text-sm text-yellow-800 bg-yellow-100 border-l-4 border-yellow-500" role="alert">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-3"></i>
+                    <div>
+                        <p class="font-bold">Modo Mantenimiento Activo</p>
+                        <p>El acceso para colaboradores está temporalmente desactivado.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center">
+                <img src="https://ipch.net.pe/wp-content/uploads/2025/07/IPCH-VERTICAL-V1-COLOR.png" alt="Logotipo del Instituto" class="w-24 h-24 mx-auto mb-4" onerror="this.onerror=null; this.src='https://placehold.co/96x96/fee2e2/c80000?text=IPCH';">
+                <h2 class="mt-4 text-3xl font-bold text-gray-900">Sistema de Gestión Integral v3</h2>
+                <p class="mt-2 text-sm text-gray-600">Bienvenido. Inicia sesión para continuar.</p>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label for="email" class="text-sm font-bold text-gray-600 block">Correo Electrónico</label>
+                    <input type="email" id="email" class="w-full p-3 mt-1 text-gray-900 bg-gray-50 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                </div>
+                <div>
+                    <label for="password" class="text-sm font-bold text-gray-600 block">Contraseña</label>
+                    <div class="relative">
+                        <input type="password" id="password" class="w-full p-3 mt-1 text-gray-900 bg-gray-50 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 pr-10" required>
+                        <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="loginBtn" class="w-full btn-primary font-bold py-3 px-4 rounded-md">Iniciar Sesión</button>
+                </div>
+                <p id="loginError" class="text-sm text-center text-red-600"></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div class="relative min-h-screen md:flex">
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
+            <aside id="sidebar" class="bg-white text-gray-800 w-64 fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 shadow-lg md:shadow-none flex flex-col">
+                <div class="p-6 text-center border-b">
+                     <img src="https://ipch.net.pe/wp-content/uploads/2025/07/IPCH-VERTICAL-V1-COLOR.png" alt="Logotipo del Instituto" class="w-20 h-20 mx-auto" onerror="this.onerror=null; this.src='https://placehold.co/80x80/fee2e2/c80000?text=IPCH';">
+                </div>
+                <nav id="main-nav" class="flex-1 px-4 py-6 space-y-2">
+                    <a href="#" data-page="dashboard" class="nav-link flex items-center px-4 py-2.5 rounded-md active"><i class="fas fa-tachometer-alt w-6 mr-3"></i>Dashboard</a>
+                    <a href="#" data-page="asistencia" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-clock w-6 mr-3"></i>Asistencia</a>
+                    <a href="#" data-page="ver-registros" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-database w-6 mr-3"></i>Ver Registros</a>
+                    <a href="#" data-page="registrar-data" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-plus-circle w-6 mr-3"></i>Registrar Data</a>
+                    <a href="#" data-page="modificar-data" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-edit w-6 mr-3"></i>Modificar Data</a>
+                    <a href="#" data-page="gestiones" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-tasks w-6 mr-3"></i>Gestiones</a>
+                    <a href="#" data-page="cobranzas" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-file-invoice-dollar w-6 mr-3"></i>Cobranzas</a>
+                    <a href="#" data-page="control-pagos" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-cash-register w-6 mr-3"></i>Control de Pagos</a>
+                    <a href="#" data-page="seguimientos" class="nav-link flex items-center px-4 py-2.5 rounded-md relative">
+                        <i class="fas fa-bell w-6 mr-3"></i>Seguimientos
+                        <span id="notifications-badge" class="absolute top-1 right-2 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                    </a>
+                    <a href="#" data-page="calculadora" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-calculator w-6 mr-3"></i>Calculadora</a>
+                    <a href="#" data-page="estadisticas" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-chart-pie w-6 mr-3"></i>Estadísticas</a>
+                    <a href="#" data-page="restaurar" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-undo w-6 mr-3"></i>Restaurar Backup</a>
+                    <a href="#" data-page="admin" class="nav-link flex items-center px-4 py-2.5 rounded-md"><i class="fas fa-shield-alt w-6 mr-3"></i>Administración</a>
+                </nav>
+                <div class="p-4 border-t">
+                    <div id="userInfo" class="px-4 py-2 mb-2"></div>
+                    <button id="logout-btn" class="w-full flex items-center justify-center px-4 py-2.5 rounded-md text-red-600 hover:bg-red-50">
+                        <i class="fas fa-sign-out-alt w-6 mr-3"></i>Cerrar Sesión
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Contenido Principal -->
+            <div class="flex-1 flex flex-col overflow-x-hidden">
+                <header class="p-4 bg-white shadow-md md:hidden flex justify-between items-center sticky top-0 z-10">
+                    <button id="hamburger-btn" class="text-gray-800 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                    <img src="https://ipch.net.pe/wp-content/uploads/2025/07/IPCH-VERTICAL-V1-COLOR.png" alt="Logotipo" class="h-8" onerror="this.onerror=null; this.style.display='none';">
+                    <div id="mobile-user-info" class="text-right"></div>
+                </header>
+                
+                <main class="flex-1 h-full">
+                    <div id="page-dashboard" class="page-content h-full"><iframe id="iframe-dashboard" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-asistencia" class="page-content hidden h-full"><iframe id="iframe-asistencia" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-ver-registros" class="page-content hidden h-full"><iframe id="iframe-ver-registros" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-registrar-data" class="page-content hidden h-full"><iframe id="iframe-registrar-data" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-modificar-data" class="page-content hidden h-full"><iframe id="iframe-modificar-data" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-gestiones" class="page-content hidden h-full"><iframe id="iframe-gestiones" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-cobranzas" class="page-content hidden h-full"><iframe id="iframe-cobranzas" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-control-pagos" class="page-content hidden h-full"><iframe id="iframe-control-pagos" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-seguimientos" class="page-content hidden h-full"><iframe id="iframe-seguimientos" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-calculadora" class="page-content hidden h-full"><iframe id="iframe-calculadora" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-estadisticas" class="page-content hidden h-full"><iframe id="iframe-estadisticas" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-restaurar" class="page-content hidden h-full"><iframe id="iframe-restaurar" class="w-full h-full border-0"></iframe></div>
+                    <div id="page-admin" class="page-content hidden h-full"><iframe id="iframe-admin" class="w-full h-full border-0"></iframe></div>
+                </main>
+            </div>
+        </div>
+        <!-- Botón de Refresco Flotante -->
+        <button id="refresh-btn" class="hidden fixed bottom-5 right-5 bg-red-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-red-700 transition-transform transform hover:scale-110 z-40">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+    
+    <!-- Contenedores para notificaciones y modales de confirmación -->
+    <div id="notification-container" class="fixed top-5 right-5 z-[100] space-y-3 w-80"></div>
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-[101] p-4">
+        <div class="card p-6 rounded-lg w-full max-w-sm text-center">
+            <p id="confirm-modal-text" class="mb-6 text-gray-700"></p>
+            <div class="flex justify-center space-x-4">
+                <button id="confirm-modal-cancel" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-md">Cancelar</button>
+                <button id="confirm-modal-ok" class="btn-primary font-semibold py-2 px-6 rounded-md">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const toggleSidebar = () => {
+                sidebar.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+            };
+            if (hamburgerBtn) hamburgerBtn.addEventListener('click', toggleSidebar);
+            if(overlay) overlay.addEventListener('click', toggleSidebar);
+
+            const togglePassword = document.getElementById('togglePassword');
+            const password = document.getElementById('password');
+            if (togglePassword && password) {
+                togglePassword.addEventListener('click', function (e) {
+                    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                    password.setAttribute('type', type);
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-eye');
+                    icon.classList.toggle('fa-eye-slash');
+                });
+            }
+
+            // Listener para el botón de refresco de caché del módulo de admin
+            window.addEventListener('message', (event) => {
+                if (event.data.type === 'force-reload') {
+                    location.reload(true);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

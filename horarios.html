@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Horarios Múltiples por País</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .dias-semana input[type="checkbox"]:checked + span {
+            background-color: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+        .remove-btn {
+            opacity: 0.5;
+            transition: all 0.2s ease-in-out;
+        }
+        .horario-config-block:hover .remove-btn {
+            opacity: 1;
+        }
+        .copy-btn-feedback {
+            background-color: #22c55e !important;
+            color: white !important;
+        }
+        .horario-widget-container-v2 {
+            font-family: 'Inter', sans-serif;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .horario-widget-header-v2 {
+            padding: 0.75rem 1.25rem;
+            background-color: #1e293b;
+            color: #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .horario-widget-body-v2 {
+            padding: 0.5rem 0;
+        }
+        .horario-widget-fila-v2 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.95rem;
+        }
+        .horario-widget-fila-v2:last-child {
+            border-bottom: none;
+        }
+        .horario-widget-info-v2 {
+            font-weight: 500;
+            color: #475569;
+            line-height: 1.4;
+        }
+        .horario-widget-hora-v2 {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .horario-widget-fecha-v2 {
+             font-weight: 600;
+             color: #475569;
+             text-align: right;
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div class="container mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl sm:text-4xl font-bold text-slate-800">Generador de Horarios</h1>
+                <p class="text-slate-500 mt-2">Configura los horarios en hora de Perú (PET) y obtén el código para cada país.</p>
+            </div>
+            
+            <div id="horarios-container" class="space-y-6">
+                <!-- Los bloques de horario se insertan aquí vía JS -->
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex gap-2 w-full sm:w-auto">
+                     <button id="addHorarioBtn" class="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-transform transform hover:scale-105">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                        Añadir
+                    </button>
+                    <button id="limpiarBtn" class="w-full flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg transition-transform transform hover:scale-105">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        Limpiar
+                    </button>
+                </div>
+                <button id="generarBtn" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg text-lg transition-transform transform hover:scale-105">
+                    Generar Horarios
+                </button>
+            </div>
+        </div>
+
+        <div id="resultados" class="mt-12"></div>
+    </div>
+
+    <!-- Plantilla para un bloque de configuración de horario -->
+    <template id="horario-template">
+        <div class="horario-config-block bg-slate-50 border border-slate-200 p-5 rounded-xl relative transition-shadow hover:shadow-md">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-lg font-bold text-slate-700">Horario #<span class="numero-horario">1</span></h3>
+                <button class="remove-btn text-slate-400 hover:text-red-500" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div>
+                    <label class="block font-semibold text-slate-600 mb-2 text-sm">1. Frecuencia (Días)</label>
+                    <div class="dias-semana flex flex-wrap gap-2">
+                        <label><input type="checkbox" name="dia" value="Lun" class="hidden"> <span class="cursor-pointer border border-slate-300 rounded-full px-3 py-1 text-sm transition-colors">Lunes</span></label>
+                        <label><input type="checkbox" name="dia" value="Mar" class="hidden"> <span class="cursor-pointer border border-slate-300 rounded-full px-3 py-1 text-sm transition-colors">Martes</span></label>
+                        <label><input type="checkbox" name="dia" value="Mié" class="hidden"> <span class="cursor-pointer border border-slate-300 rounded-full px-3 py-1 text-sm transition-colors">Miércoles</span></label>
+                        <label><input type="checkbox" name="dia" value="Jue" class="hidden"> <span class="cursor-pointer border border-slate-300 rounded-full px-3 py-1 text-sm transition-colors">Jueves</span></label>
+                        <label><input type="checkbox" name="dia" value="Vie" class="hidden"> <span class="cursor-pointer border border-slate-300 rounded-full px-3 py-1 text-sm transition-colors">Viernes</span></label>
+                        <label><input type="checkbox" name="dia" value="Sáb" class="hidden"> <span class="cursor-pointer border border-slate-300 rounded-full px-3 py-1 text-sm transition-colors">Sábado</span></label>
+                        <label><input type="checkbox" name="dia" value="Dom" class="hidden"> <span class="cursor-pointer border border-slate-300 rounded-full px-3 py-1 text-sm transition-colors">Domingo</span></label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-600 mb-2 text-sm">2. Horario (Perú)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="time" class="hora-inicio bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <span class="text-slate-500">a</span>
+                            <input type="time" class="hora-fin bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-600 mb-2 text-sm">3. Fecha de Inicio</label>
+                        <input type="date" class="fecha-inicio bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        // --- Communication helper ---
+        function showNotification(message, type = 'success', duration = 4000) {
+            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const horariosContainer = document.getElementById('horarios-container');
+            const addHorarioBtn = document.getElementById('addHorarioBtn');
+            const limpiarBtn = document.getElementById('limpiarBtn');
+            const generarBtn = document.getElementById('generarBtn');
+            const resultadosDiv = document.getElementById('resultados');
+            const horarioTemplate = document.getElementById('horario-template');
+
+            const paises = [
+                { nombre: 'Perú', tz: 'America/Lima', codigo: 'PE' },
+                { nombre: 'Ecuador', tz: 'America/Guayaquil', codigo: 'EC' },
+                { nombre: 'Colombia', tz: 'America/Bogota', codigo: 'CO' },
+                { nombre: 'México (CDMX)', tz: 'America/Mexico_City', codigo: 'MX' },
+                { nombre: 'EEUU (Miami)', tz: 'America/New_York', codigo: 'US' },
+                { nombre: 'España', tz: 'Europe/Madrid', codigo: 'ES' },
+                { nombre: 'Argentina', tz: 'America/Argentina/Buenos_Aires', codigo: 'AR' }
+            ];
+
+            const MAX_HORARIOS = 5;
+
+            const addNewHorarioBlock = () => {
+                if (horariosContainer.children.length >= MAX_HORARIOS) return;
+                const clone = horarioTemplate.content.cloneNode(true);
+                horariosContainer.appendChild(clone);
+                updateUIState();
+            };
+
+            const updateUIState = () => {
+                const blocks = horariosContainer.querySelectorAll('.horario-config-block');
+                blocks.forEach((block, index) => {
+                    block.querySelector('.numero-horario').textContent = index + 1;
+                    block.querySelector('.remove-btn').style.display = blocks.length > 1 ? 'block' : 'none';
+                });
+                addHorarioBtn.disabled = blocks.length >= MAX_HORARIOS;
+                addHorarioBtn.classList.toggle('opacity-50', addHorarioBtn.disabled);
+                addHorarioBtn.classList.toggle('cursor-not-allowed', addHorarioBtn.disabled);
+            };
+            
+            const resetForm = () => {
+                horariosContainer.innerHTML = '';
+                resultadosDiv.innerHTML = '';
+                addNewHorarioBlock();
+            };
+
+            horariosContainer.addEventListener('click', e => {
+                if (e.target.closest('.remove-btn')) {
+                    e.target.closest('.horario-config-block').remove();
+                    updateUIState();
+                }
+            });
+            addHorarioBtn.addEventListener('click', addNewHorarioBlock);
+            limpiarBtn.addEventListener('click', resetForm);
+            
+            generarBtn.addEventListener('click', () => {
+                const horariosData = [];
+                let allValid = true;
+                horariosContainer.querySelectorAll('.horario-config-block').forEach(block => {
+                    const dias = Array.from(block.querySelectorAll('input[name="dia"]:checked')).map(cb => cb.value);
+                    const inicio = block.querySelector('.hora-inicio').value;
+                    const fin = block.querySelector('.hora-fin').value;
+                    const fecha = block.querySelector('.fecha-inicio').value;
+                    if (dias.length === 0 || !inicio || !fin || !fecha) allValid = false;
+                    else horariosData.push({ dias, inicio, fin, fecha });
+                });
+
+                if (!allValid) {
+                    showNotification('Por favor, completa todos los campos de todos los horarios.', 'error');
+                    return;
+                }
+                if (horariosData.length === 0) {
+                    showNotification('Debes configurar al menos un horario.', 'info');
+                    return;
+                }
+
+                displayResults(horariosData);
+            });
+
+            const formatTimeWithBoldAmPm = (date, timeZone) => {
+                const timeString = new Intl.DateTimeFormat('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: timeZone
+                }).format(date);
+                const parts = timeString.split(' ');
+                return `${parts[0]} <strong class="font-bold text-slate-900">${parts[1]}</strong>`;
+            };
+
+            const displayResults = (horariosData) => {
+                resultadosDiv.innerHTML = `<h2 class="text-2xl font-bold text-center text-slate-800 mb-8">Widgets Generados por País</h2>`;
+                const gridContainer = document.createElement('div');
+                gridContainer.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8';
+
+                paises.forEach(pais => {
+                    let filasHtml = '';
+                    horariosData.forEach(horario => {
+                        const diasTexto = horario.dias.join(' y ');
+                        const [year, month, day] = horario.fecha.split('-');
+                        const fechaFormateada = `${day}/${month}/${year.slice(-2)}`;
+
+                        const fechaInicioPeru = new Date(`${horario.fecha}T${horario.inicio}:00-05:00`);
+                        const fechaFinPeru = new Date(`${horario.fecha}T${horario.fin}:00-05:00`);
+                        
+                        const horaLocalInicio = formatTimeWithBoldAmPm(fechaInicioPeru, pais.tz);
+                        const horaLocalFin = formatTimeWithBoldAmPm(fechaFinPeru, pais.tz);
+                        
+                        filasHtml += `
+                        <div class="horario-widget-fila-v2">
+                            <div class="horario-widget-info-v2">
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span>✅</span>
+                                    <span>${diasTexto}</span>
+                                </span><br>
+                                <span class="horario-widget-hora-v2 inline-flex items-center gap-1.5 mt-1">
+                                    <span>⏰</span>
+                                    <span>${horaLocalInicio} a ${horaLocalFin}</span>
+                                </span>
+                            </div>
+                            <div class="horario-widget-fecha-v2 inline-flex items-center gap-1.5">
+                                <span>📅</span>
+                                <span>${fechaFormateada}</span>
+                            </div>
+                        </div>`;
+                    });
+
+                    const widgetHtml = `
+<div class="horario-widget-container-v2">
+    <div class="horario-widget-header-v2">
+        <span>Horarios Disponibles</span>
+        <span>F. Inicio</span>
+    </div>
+    <div class="horario-widget-body-v2">${filasHtml}</div>
+</div>`;
+                    
+                    const paisContainer = document.createElement('div');
+                    paisContainer.className = 'pais-container bg-white p-5 rounded-xl shadow-md';
+                    paisContainer.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-lg font-semibold text-slate-800">${pais.nombre} (${pais.codigo})</h3>
+                        </div>
+                        <h4 class="font-medium text-slate-500 mb-2 text-sm">Previsualización:</h4>
+                        <div class="preview mb-4">${widgetHtml}</div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-medium text-slate-500 text-sm">Código para embeber:</h4>
+                            <button class="copy-btn text-xs bg-slate-200 text-slate-600 font-semibold py-1 px-2 rounded-md hover:bg-slate-300 transition-colors">Copiar</button>
+                        </div>
+                        <textarea class="w-full h-32 bg-slate-800 text-slate-200 font-mono text-xs p-3 rounded-lg focus:ring-2 focus:ring-blue-500" readonly>${widgetHtml.replace(/\s{2,}/g, ' ').trim()}</textarea>
+                    `;
+                    gridContainer.appendChild(paisContainer);
+                });
+                resultadosDiv.appendChild(gridContainer);
+            };
+            
+            resultadosDiv.addEventListener('click', e => {
+                const copyBtn = e.target.closest('.copy-btn');
+                if (copyBtn) {
+                    const textarea = copyBtn.closest('.pais-container').querySelector('textarea');
+                    textarea.select();
+                    document.execCommand('copy');
+                    
+                    copyBtn.textContent = '¡Copiado!';
+                    copyBtn.classList.add('copy-btn-feedback');
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copiar';
+                        copyBtn.classList.remove('copy-btn-feedback');
+                    }, 2000);
+                }
+            });
+
+            addNewHorarioBlock();
+        });
+    </script>
+</body>
+</html>

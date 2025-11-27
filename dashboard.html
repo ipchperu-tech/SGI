@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SGI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Cabecera con Saludo y Fecha/Hora -->
+        <div class="flex flex-wrap justify-between items-center mb-8">
+            <div>
+                <h2 id="greeting" class="text-3xl font-bold text-gray-800">Cargando...</h2>
+                <p class="text-gray-500">Bienvenido a la v3 del Sistema de Gestión Integral.</p>
+                <a href="asistencia.html" target="_blank" class="text-red-600 hover:text-red-800 font-semibold mt-2 inline-block">
+                    <i class="fas fa-clock mr-1"></i>
+                    Registrar asistencia
+                </a>
+            </div>
+            <div id="date-time-container" class="text-right bg-white p-3 rounded-lg shadow-sm">
+                <p id="time" class="text-2xl font-semibold text-gray-800">00:00:00</p>
+                <p id="date" class="text-sm text-gray-500">cargando fecha...</p>
+            </div>
+        </div>
+
+        <!-- Botones de Acceso Rápido -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <button data-page="registrar-data" class="quick-action-btn card p-4 text-center hover:bg-red-50 transition-colors duration-200">
+                <i class="fas fa-plus-circle text-3xl text-red-600"></i>
+                <p class="mt-2 font-semibold text-sm">Registrar Data</p>
+            </button>
+            <button data-page="gestiones" class="quick-action-btn card p-4 text-center hover:bg-red-50 transition-colors duration-200">
+                <i class="fas fa-tasks text-3xl text-red-600"></i>
+                <p class="mt-2 font-semibold text-sm">Gestiones</p>
+            </button>
+            <button data-page="cobranzas" class="quick-action-btn card p-4 text-center hover:bg-red-50 transition-colors duration-200">
+                <i class="fas fa-file-invoice-dollar text-3xl text-red-600"></i>
+                <p class="mt-2 font-semibold text-sm">Cobranzas</p>
+            </button>
+            <button data-page="ver-registros" class="quick-action-btn card p-4 text-center hover:bg-red-50 transition-colors duration-200">
+                <i class="fas fa-database text-3xl text-red-600"></i>
+                <p class="mt-2 font-semibold text-sm">Ver Registros</p>
+            </button>
+        </div>
+
+        <!-- Tareas y Alertas -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Columna de Tareas Pendientes -->
+            <div class="card p-6">
+                <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i class="fas fa-tasks text-yellow-500"></i> Tareas y Seguimientos Pendientes</h3>
+                <div id="tasks-loader" class="text-center py-4"><div class="loader inline-block"></div></div>
+                <div id="tasks-container" class="space-y-3 max-h-80 overflow-y-auto"></div>
+            </div>
+
+            <!-- Columna de Aulas por Finalizar -->
+            <div class="card p-6">
+                <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i class="fas fa-hourglass-end text-blue-500"></i> Aulas Próximas a Finalizar (7 días)</h3>
+                <div id="aulas-loader" class="text-center py-4"><div class="loader inline-block"></div></div>
+                <div id="aulas-container" class="space-y-3 max-h-80 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, where, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+          authDomain: "bdv3-ipch.firebaseapp.com",
+          projectId: "bdv3-ipch",
+          storageBucket: "bdv3-ipch.firebasestorage.app",
+          messagingSenderId: "993842726107",
+          appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        function safeToDate(firestoreTimestamp) {
+            if (!firestoreTimestamp) return null;
+            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
+            if (typeof firestoreTimestamp === 'string') {
+                const date = new Date(firestoreTimestamp);
+                if (!isNaN(date)) return date;
+            }
+            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
+            return null;
+        }
+
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const greetingEl = document.getElementById('greeting');
+            const timeEl = document.getElementById('time');
+            const dateEl = document.getElementById('date');
+            const tasksLoader = document.getElementById('tasks-loader');
+            const tasksContainer = document.getElementById('tasks-container');
+            const aulasLoader = document.getElementById('aulas-loader');
+            const aulasContainer = document.getElementById('aulas-container');
+
+            const allowedModulesParam = getQueryParam('allowed');
+            if (allowedModulesParam) {
+                const allowedModules = allowedModulesParam.split(',');
+                document.querySelectorAll('.quick-action-btn').forEach(button => {
+                    if (!allowedModules.includes(button.dataset.page)) {
+                        button.style.display = 'none';
+                    }
+                });
+            }
+
+            const userName = getQueryParam('userName') || 'Colaborador';
+            greetingEl.innerHTML = `Nǐ hǎo, <span class="text-red-600">${userName.split(' ')[0]}</span>!`;
+
+            function updateDateTime() {
+                const now = new Date();
+                const timeZone = 'America/Lima';
+                
+                const timeOptions = { timeZone: timeZone, hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timeZone };
+
+                timeEl.textContent = now.toLocaleTimeString('es-ES', timeOptions);
+                dateEl.textContent = now.toLocaleDateString('es-ES', dateOptions);
+            }
+            setInterval(updateDateTime, 1000);
+            updateDateTime();
+
+            const qTasks = query(
+                collection(db, "seguimientos"), 
+                where("estado", "==", "Pendiente"),
+                limit(10)
+            );
+            onSnapshot(qTasks, (snapshot) => {
+                tasksLoader.style.display = 'none';
+                if (snapshot.empty) {
+                    tasksContainer.innerHTML = '<p class="text-center text-gray-500 text-sm py-4">No hay seguimientos pendientes.</p>';
+                    return;
+                }
+                const docs = snapshot.docs.map(doc => doc.data());
+                docs.sort((a, b) => safeToDate(a.fechaSeguimiento) - safeToDate(b.fechaSeguimiento));
+                tasksContainer.innerHTML = docs.map(data => {
+                    const fecha = safeToDate(data.fechaSeguimiento)?.toLocaleDateString('es-ES') || 'Fecha inválida';
+                    return `
+                        <div class="p-3 bg-gray-50 rounded-md border">
+                            <p class="font-semibold text-sm">${data.nombreAlumno}</p>
+                            <p class="text-xs text-gray-600">${data.descripcion}</p>
+                            <p class="text-xs text-gray-400 text-right mt-1">Registrado: ${fecha}</p>
+                        </div>
+                    `;
+                }).join('');
+            });
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const sevenDaysFromNow = new Date();
+            sevenDaysFromNow.setDate(today.getDate() + 7);
+            sevenDaysFromNow.setHours(23,59,59,999);
+
+
+            const qAulas = query(
+                collection(db, "aulas"),
+                where("fechaFin", ">=", Timestamp.fromDate(today)),
+                where("fechaFin", "<=", Timestamp.fromDate(sevenDaysFromNow)),
+                orderBy("fechaFin", "asc")
+            );
+            onSnapshot(qAulas, (snapshot) => {
+                aulasLoader.style.display = 'none';
+                if (snapshot.empty) {
+                    aulasContainer.innerHTML = '<p class="text-center text-gray-500 text-sm py-4">No hay aulas finalizando en los próximos 7 días.</p>';
+                    return;
+                }
+                aulasContainer.innerHTML = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const fecha = safeToDate(data.fechaFin)?.toLocaleDateString('es-ES') || 'Fecha inválida';
+                    
+                    let docentesHTML = `<p class="text-xs text-gray-600">Docente: ${data.nombreDocente}</p>`;
+                    if (data.docenteApoyo) {
+                        docentesHTML += `<p class="text-xs text-gray-500 italic">Apoyo: ${data.docenteApoyo}</p>`;
+                    }
+
+                    return `
+                        <div class="p-3 bg-gray-50 rounded-md border">
+                            <div class="flex justify-between items-center">
+                                <p class="font-semibold text-sm text-red-600">${data.codigoAula}</p>
+                                <p class="text-xs font-bold text-gray-700">Finaliza: ${fecha}</p>
+                            </div>
+                            ${docentesHTML}
+                            <p class="text-xs text-gray-600">Alumnos: ${data.cantidadAlumnos || 0}</p>
+                        </div>
+                    `;
+                }).join('');
+            });
+            
+            document.querySelectorAll('.quick-action-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const page = button.dataset.page;
+                    if (page) {
+                        window.parent.postMessage({ type: 'navigate', page: page }, '*');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

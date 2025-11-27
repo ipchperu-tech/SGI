@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Seguimientos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+            <h2 class="text-3xl font-bold text-gray-800">Tareas y Seguimientos</h2>
+        </div>
+
+        <!-- Panel de Acciones -->
+        <div class="card p-4 mb-6">
+            <h3 class="font-semibold mb-3 text-center">Agendar Nueva Tarea o Seguimiento</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="add-pausado-btn" class="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 font-semibold py-3 px-4 rounded-md transition-colors">Agendar a Alumno Pausado</button>
+                <button id="add-retirado-btn" class="bg-red-100 text-red-800 hover:bg-red-200 font-semibold py-3 px-4 rounded-md transition-colors">Agendar a Alumno Retirado</button>
+                <button id="add-general-btn" class="bg-blue-100 text-blue-800 hover:bg-blue-200 font-semibold py-3 px-4 rounded-md transition-colors">Crear Tarea General</button>
+            </div>
+        </div>
+
+        <div class="flex justify-end items-center mb-4">
+             <div class="flex items-center gap-2">
+                <label for="status-filter" class="font-semibold">Filtrar por:</label>
+                <select id="status-filter" class="p-2 border rounded-md">
+                    <option value="Pendiente">Pendientes</option>
+                    <option value="Completado">Completados</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Columna de Seguimientos Manuales -->
+            <div>
+                <h3 class="text-xl font-bold text-gray-700 mb-4">Seguimientos Manuales</h3>
+                <div id="manual-seguimientos-container" class="space-y-4">
+                    <div class="text-center py-10">
+                        <div class="loader inline-block"></div>
+                        <p class="text-gray-500 mt-2">Cargando tareas manuales...</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Columna de Traslados Automáticos -->
+            <div>
+                <h3 class="text-xl font-bold text-gray-700 mb-4">Traslados Automáticos</h3>
+                <div id="automatic-traslados-container" class="space-y-4">
+                     <div class="text-center py-10">
+                        <div class="loader inline-block"></div>
+                        <p class="text-gray-500 mt-2">Cargando traslados...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Agendar Seguimiento/Tarea -->
+    <div id="seguimiento-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="card p-6 rounded-lg w-full max-w-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="seguimiento-modal-title" class="text-xl font-bold">Agendar Tarea</h3>
+                <button id="cancel-seguimiento-btn" class="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+            </div>
+            <form id="form-seguimiento" class="space-y-4">
+                <input type="hidden" id="seguimiento-alumno-id">
+                <input type="hidden" id="seguimiento-tipo">
+
+                <div id="student-search-section" class="hidden">
+                    <input type="text" id="search-alumno-input" placeholder="Buscar alumno..." class="w-full p-2 border rounded">
+                    <div id="search-results-container" class="mt-2 max-h-40 overflow-y-auto border rounded"></div>
+                </div>
+
+                <div id="task-title-section" class="hidden">
+                     <label class="block text-sm font-medium">Título de la Tarea</label>
+                     <input type="text" id="task-title-input" placeholder="Ej: Preparar reporte mensual" class="w-full p-2 border rounded">
+                </div>
+                
+                <p id="selected-student-name" class="hidden font-semibold p-2 bg-gray-100 rounded-md"></p>
+
+                <div>
+                    <label class="block text-sm font-medium">Fecha de Seguimiento/Vencimiento</label>
+                    <input type="date" id="seguimiento-fecha" class="w-full p-2 mt-1 border rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Descripción / Nota</label>
+                    <textarea id="seguimiento-descripcion" class="w-full p-2 mt-1 border rounded" rows="4" placeholder="Añade detalles aquí..." required></textarea>
+                </div>
+                <div class="flex justify-end space-x-4 mt-2">
+                    <button type="submit" id="save-seguimiento-btn" class="btn-primary py-2 px-4 rounded-md" disabled>Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc, Timestamp, addDoc, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+            authDomain: "bdv3-ipch.firebaseapp.com",
+            projectId: "bdv3-ipch",
+            storageBucket: "bdv3-ipch.firebasestorage.app",
+            messagingSenderId: "993842726107",
+            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let dataCache = {
+            alumnos: [],
+            aulas: [],
+            seguimientos: [],
+            trasladosPendientes: []
+        };
+        
+        function safeToDate(firestoreTimestamp) {
+            if (!firestoreTimestamp) return null;
+            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
+            if (typeof firestoreTimestamp === 'string') {
+                const date = new Date(firestoreTimestamp);
+                if (!isNaN(date)) return date;
+            }
+            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
+            return null;
+        }
+
+        function showNotification(message, type = 'success', duration = 5000) {
+            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+        }
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const confirmId = Math.random().toString(36).substring(2, 15);
+                const listener = (event) => {
+                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
+                        window.removeEventListener('message', listener);
+                        resolve(event.data.result);
+                    }
+                };
+                window.addEventListener('message', listener);
+                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
+            });
+        }
+        const currentUserEmail = new URLSearchParams(window.location.search).get('user') || 'sistema@sgi.com';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const manualContainer = document.getElementById('manual-seguimientos-container');
+            const automaticContainer = document.getElementById('automatic-traslados-container');
+            const statusFilter = document.getElementById('status-filter');
+
+            const taskIcons = {
+                'Seguimiento a Pausado': { icon: 'fa-user-clock', color: 'text-yellow-500' },
+                'Seguimiento a Retirado': { icon: 'fa-user-slash', color: 'text-red-500' },
+                'Tarea General': { icon: 'fa-clipboard-list', color: 'text-gray-500' },
+                'Traslado Pendiente': { icon: 'fa-exchange-alt', color: 'text-blue-500' }
+            };
+
+            function renderAllItems() {
+                const filterValue = statusFilter.value;
+                
+                // Render Manual Follow-ups
+                const manualList = dataCache.seguimientos
+                    .filter(item => item.estado === filterValue)
+                    .sort((a, b) => a.fechaSeguimiento.toMillis() - b.fechaSeguimiento.toMillis()); // Ascendente
+                renderManualItems(manualList, manualContainer);
+                
+                // Render Automatic Transfers
+                const trasladosList = dataCache.trasladosPendientes
+                    .filter(item => item.estado === filterValue)
+                    .sort((a, b) => b.fechaCreacion.toMillis() - a.fechaCreacion.toMillis()); // Descendente
+                renderTrasladosItems(trasladosList, automaticContainer);
+            }
+
+            function renderManualItems(items, container) {
+                container.innerHTML = '';
+                if (items.length === 0) {
+                    container.innerHTML = `<div class="card p-6 text-center text-gray-500">No hay seguimientos manuales ${statusFilter.value.toLowerCase()}s.</div>`;
+                    return;
+                }
+                items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card p-4 flex items-start justify-between gap-4';
+                    const config = taskIcons[item.tipoSeguimiento] || taskIcons['Tarea General'];
+                    const fecha = safeToDate(item.fechaSeguimiento).toLocaleDateString('es-ES');
+                    const isPending = item.estado === 'Pendiente';
+
+                    let contentHTML = `
+                        <div class="flex items-center gap-4 w-full">
+                            <i class="fas ${config.icon} text-2xl ${config.color}"></i>
+                            <div class="w-full">
+                                <div class="flex justify-between items-center flex-wrap gap-x-4">
+                                    <p class="font-bold">${item.nombreAlumno}</p>
+                                    <p class="text-xs text-gray-400">Para el: ${fecha}</p>
+                                </div>
+                                <p class="text-sm text-gray-600 mt-1">${item.descripcion}</p>
+                                <p class="text-xs text-gray-500 mt-2 text-right">Agendado por: ${item.usuarioCreador}</p>
+                            </div>
+                        </div>
+                    `;
+
+                    if (isPending) {
+                        contentHTML += `<button data-id="${item.id}" class="complete-btn btn-primary whitespace-nowrap py-2 px-4 rounded-md text-sm">Completar</button>`;
+                    }
+                    card.innerHTML = contentHTML;
+                    container.appendChild(card);
+                });
+            }
+            
+            function renderTrasladosItems(items, container) {
+                container.innerHTML = '';
+                 if (items.length === 0) {
+                    container.innerHTML = `<div class="card p-6 text-center text-gray-500">No hay traslados ${statusFilter.value.toLowerCase()}s.</div>`;
+                    return;
+                }
+                items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card p-4';
+                    const config = taskIcons['Traslado Pendiente'];
+                    const fecha = safeToDate(item.fechaCreacion).toLocaleDateString('es-ES');
+
+                    // --- ENRIQUECIMIENTO DE DATOS ---
+                    let cicloOrigen = item.cicloOrigen;
+                    let fechaFinObj = item.fechaFinAulaDestino;
+
+                    if (cicloOrigen === undefined) {
+                        const alumno = dataCache.alumnos.find(a => a.id === item.alumnoId);
+                        if (alumno) cicloOrigen = alumno.cicloInscrito;
+                    }
+                    if (fechaFinObj === undefined) {
+                        const aulaDestino = dataCache.aulas.find(a => a.codigoAula === item.aulaDestino);
+                        if (aulaDestino) fechaFinObj = aulaDestino.fechaFin;
+                    }
+                    // --- FIN DE ENRIQUECIMIENTO ---
+
+                    const fechaFin = fechaFinObj ? safeToDate(fechaFinObj).toLocaleDateString('es-ES') : 'N/A';
+
+
+                    card.innerHTML = `
+                         <div class="flex items-center gap-4 w-full">
+                            <i class="fas ${config.icon} text-2xl ${config.color}"></i>
+                            <div class="w-full">
+                                <div class="flex justify-between items-center flex-wrap gap-x-4">
+                                    <p class="font-bold">${item.nombreAlumno}</p>
+                                    <p class="text-xs text-gray-400">Registrado: ${fecha}</p>
+                                </div>
+                                <div class="text-sm text-gray-600 space-y-1 mt-1">
+                                    <p><strong>De:</strong> ${item.aulaOrigen} (Ciclo ${cicloOrigen || 'N/A'})</p>
+                                    <p><strong>A:</strong> ${item.aulaDestino} (Ciclo ${item.cicloDestino || 'N/A'})</p>
+                                    <p class="text-xs text-gray-500">Aula de destino finaliza el ${fechaFin}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            const modal = document.getElementById('seguimiento-modal');
+            const modalTitle = document.getElementById('seguimiento-modal-title');
+            const form = document.getElementById('form-seguimiento');
+            const studentSearchSection = document.getElementById('student-search-section');
+            const taskTitleSection = document.getElementById('task-title-section');
+            const searchInput = document.getElementById('search-alumno-input');
+            const searchResultsContainer = document.getElementById('search-results-container');
+            const selectedStudentName = document.getElementById('selected-student-name');
+            const saveBtn = document.getElementById('save-seguimiento-btn');
+
+            function openSeguimientoModal(type) {
+                form.reset();
+                selectedStudentName.classList.add('hidden');
+                searchResultsContainer.innerHTML = '';
+                saveBtn.disabled = true;
+                
+                document.getElementById('seguimiento-tipo').value = type;
+
+                if (type === 'general') {
+                    modalTitle.textContent = 'Crear Tarea General';
+                    studentSearchSection.classList.add('hidden');
+                    taskTitleSection.classList.remove('hidden');
+                    saveBtn.disabled = false;
+                } else {
+                    const status = type === 'pausado' ? 'Pausado' : 'Retirado';
+                    modalTitle.textContent = `Agendar Seguimiento a Alumno ${status}`;
+                    studentSearchSection.classList.remove('hidden');
+                    taskTitleSection.classList.add('hidden');
+                    searchInput.placeholder = `Buscar alumno en estado '${status}'...`;
+                }
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            searchInput.addEventListener('input', () => {
+                const term = searchInput.value.trim().toLowerCase();
+                searchResultsContainer.innerHTML = '';
+                if (term.length < 3) return;
+
+                const status = document.getElementById('seguimiento-tipo').value === 'pausado' ? 'Pausado' : 'Retirado';
+                const alumnos = dataCache.alumnos.filter(a => 
+                    a.estado === status && a.nombreCompleto.toLowerCase().includes(term)
+                );
+                
+                if (alumnos.length > 0) {
+                    alumnos.forEach(alumno => {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 cursor-pointer hover:bg-gray-100';
+                        div.textContent = alumno.nombreCompleto;
+                        div.addEventListener('click', () => {
+                            document.getElementById('seguimiento-alumno-id').value = alumno.id;
+                            selectedStudentName.textContent = `Alumno: ${alumno.nombreCompleto}`;
+                            selectedStudentName.classList.remove('hidden');
+                            searchResultsContainer.innerHTML = '';
+                            searchInput.value = '';
+                            saveBtn.disabled = false;
+                        });
+                        searchResultsContainer.appendChild(div);
+                    });
+                } else {
+                    searchResultsContainer.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron alumnos.</p>';
+                }
+            });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                saveBtn.disabled = true;
+                const type = document.getElementById('seguimiento-tipo').value;
+                const data = {
+                    descripcion: document.getElementById('seguimiento-descripcion').value,
+                    fechaSeguimiento: Timestamp.fromDate(new Date(document.getElementById('seguimiento-fecha').value + 'T00:00:00')),
+                    estado: 'Pendiente',
+                    usuarioCreador: currentUserEmail
+                };
+
+                if (type === 'general') {
+                    data.tipoSeguimiento = 'Tarea General';
+                    data.nombreAlumno = document.getElementById('task-title-input').value;
+                } else {
+                    data.tipoSeguimiento = type === 'pausado' ? 'Seguimiento a Pausado' : 'Seguimiento a Retirado';
+                    data.alumnoId = document.getElementById('seguimiento-alumno-id').value;
+                    data.nombreAlumno = selectedStudentName.textContent.replace('Alumno: ', '');
+                }
+
+                if (!data.nombreAlumno) {
+                    showNotification('El título de la tarea o el alumno es obligatorio.', 'error');
+                    saveBtn.disabled = false;
+                    return;
+                }
+
+                try {
+                    await addDoc(collection(db, 'seguimientos'), data);
+                    showNotification('¡Tarea/Seguimiento agendado exitosamente!', 'success');
+                    modal.classList.add('hidden');
+                } catch (error) {
+                    showNotification('Error al guardar la tarea.', 'error');
+                    console.error("Error:", error);
+                } finally {
+                    saveBtn.disabled = false;
+                }
+            });
+
+            document.getElementById('add-pausado-btn').addEventListener('click', () => openSeguimientoModal('pausado'));
+            document.getElementById('add-retirado-btn').addEventListener('click', () => openSeguimientoModal('retirado'));
+            document.getElementById('add-general-btn').addEventListener('click', () => openSeguimientoModal('general'));
+            document.getElementById('cancel-seguimiento-btn').addEventListener('click', () => modal.classList.add('hidden'));
+
+            // --- Listeners de la Base de Datos ---
+            onSnapshot(query(collection(db, "alumnos")), (snapshot) => {
+                dataCache.alumnos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAllItems();
+            });
+            onSnapshot(query(collection(db, "aulas")), (snapshot) => {
+                dataCache.aulas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAllItems();
+            });
+            onSnapshot(query(collection(db, "seguimientos")), (snapshot) => {
+                dataCache.seguimientos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAllItems();
+            });
+            onSnapshot(query(collection(db, "trasladosPendientes")), (snapshot) => {
+                dataCache.trasladosPendientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAllItems();
+            });
+
+            statusFilter.addEventListener('change', renderAllItems);
+            manualContainer.addEventListener('click', async (e) => {
+                const completeButton = e.target.closest('.complete-btn');
+                if (completeButton) {
+                    const id = completeButton.dataset.id;
+                    if (!id) return;
+                    const confirmed = await customConfirm("¿Marcar este seguimiento como completado?");
+                    if (confirmed) {
+                        try {
+                            await updateDoc(doc(db, "seguimientos", id), { estado: "Completado" });
+                            showNotification("Seguimiento completado.", "success");
+                        } catch (error) {
+                            showNotification("No se pudo completar el seguimiento.", "error");
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

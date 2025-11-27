@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saneamiento de Traslados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold text-gray-800 mb-6">Herramienta de Saneamiento de Traslados</h2>
+        
+        <div class="card p-8">
+            <div class="text-center border-4 border-dashed border-yellow-300 rounded-lg p-8 bg-yellow-50">
+                <i class="fas fa-tools text-6xl text-yellow-500"></i>
+                <h3 class="text-2xl font-bold text-yellow-800 mt-4">Reparación de Datos Históricos</h3>
+                <p class="text-gray-600 mt-2 max-w-xl mx-auto">Esta herramienta especial busca traslados por cobro antiguos a los que les falta información (`cicloOrigen`, `fechaFinAulaDestino`, etc.) y los repara para que el sistema automático pueda procesarlos correctamente.</p>
+            </div>
+
+            <div class="mt-8 pt-6 border-t">
+                <h3 class="font-bold text-lg mb-4">Corrección Individual de Traslados</h3>
+                <p class="text-sm text-gray-600 mb-4">Busca un traslado pendiente por el nombre del alumno para editarlo y corregir su información individualmente.</p>
+                
+                <div class="space-y-4">
+                    <input type="text" id="search-transfer-input" placeholder="Buscar por nombre del alumno..." class="w-full p-2 border rounded-md">
+                    <div id="search-results-container" class="max-h-60 overflow-y-auto border rounded bg-white"></div>
+                </div>
+
+                <div id="correction-form-container" class="hidden mt-6 pt-6 border-t border-dashed">
+                    <form id="correction-form">
+                        <p class="text-sm mb-2">Corrigiendo traslado para:</p>
+                        <h4 id="student-name-display" class="text-xl font-bold text-indigo-700 mb-4"></h4>
+                        
+                        <div class="p-4 bg-gray-50 rounded-lg mb-4 text-sm">
+                            <p><strong>Desde Aula:</strong> <span id="origin-aula-display"></span></p>
+                            <p><strong>Hacia Aula:</strong> <span id="destination-aula-display"></span></p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ciclo-origen-input" class="block text-sm font-medium text-gray-700">Ciclo de Origen (Detectado)</label>
+                                <input type="number" id="ciclo-origen-input" class="mt-1 w-full p-2 border rounded-md bg-gray-100" readonly>
+                            </div>
+                            <div>
+                                <label for="ciclo-destino-select" class="block text-sm font-medium text-gray-700">Ciclo de Destino (Corregir)</label>
+                                <select id="ciclo-destino-select" class="mt-1 w-full p-2 border rounded-md"></select>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <label for="fecha-fin-input" class="block text-sm font-medium text-gray-700">Fecha Fin Aula Destino (Detectada)</label>
+                            <input type="date" id="fecha-fin-input" class="mt-1 w-full p-2 border rounded-md bg-gray-100" readonly>
+                        </div>
+
+                        <div class="flex justify-end gap-4 mt-6">
+                            <button type="button" id="cancel-correction-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-md">Cancelar</button>
+                            <button type="submit" id="save-correction-btn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md">Guardar Corrección</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, Timestamp, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+            authDomain: "bdv3-ipch.firebaseapp.com",
+            projectId: "bdv3-ipch",
+            storageBucket: "bdv3-ipch.firebasestorage.app",
+            messagingSenderId: "993842726107",
+            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        let dataCache = {
+            alumnos: [],
+            aulas: [],
+            trasladosPendientes: []
+        };
+
+        // --- Helpers de Comunicación y Auditoría ---
+        function safeToDate(firestoreTimestamp) {
+            if (!firestoreTimestamp) return null;
+            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
+            if (typeof firestoreTimestamp === 'string') {
+                const date = new Date(firestoreTimestamp);
+                if (!isNaN(date)) return date;
+            }
+            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
+            return null;
+        }
+
+        function showNotification(message, type = 'success', duration = 5000) {
+            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+        }
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const confirmId = Math.random().toString(36).substring(2, 15);
+                const listener = (event) => {
+                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
+                        window.removeEventListener('message', listener);
+                        resolve(event.data.result);
+                    }
+                };
+                window.addEventListener('message', listener);
+                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
+            });
+        }
+
+        async function logAction(action, description) {
+            const currentUserEmail = new URLSearchParams(window.location.search).get('user') || 'sistema@sgi.com';
+            try {
+                await addDoc(collection(db, 'historialCambios'), {
+                    fecha: Timestamp.now(),
+                    usuario: currentUserEmail,
+                    accion: action,
+                    descripcion: description
+                });
+            } catch (error) {
+                console.error("Error logging action:", error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('search-transfer-input');
+            const searchResultsContainer = document.getElementById('search-results-container');
+            const correctionFormContainer = document.getElementById('correction-form-container');
+            const correctionForm = document.getElementById('correction-form');
+            
+            const studentNameDisplay = document.getElementById('student-name-display');
+            const originAulaDisplay = document.getElementById('origin-aula-display');
+            const destinationAulaDisplay = document.getElementById('destination-aula-display');
+            const cicloOrigenInput = document.getElementById('ciclo-origen-input');
+            const cicloDestinoSelect = document.getElementById('ciclo-destino-select');
+            const fechaFinInput = document.getElementById('fecha-fin-input');
+            const cancelBtn = document.getElementById('cancel-correction-btn');
+            
+            let selectedTransfer = null;
+            let searchTimeout;
+
+            // --- Carga de Datos en Caché ---
+            const collectionsToLoad = ['alumnos', 'aulas', 'trasladosPendientes'];
+            collectionsToLoad.forEach(name => {
+                onSnapshot(collection(db, name), snapshot => {
+                    dataCache[name] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                });
+            });
+
+            // --- Lógica de Búsqueda ---
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                const searchTerm = searchInput.value.trim().toLowerCase();
+                
+                correctionFormContainer.classList.add('hidden');
+                searchResultsContainer.innerHTML = '';
+                selectedTransfer = null;
+
+                if (searchTerm.length < 3) return;
+
+                searchTimeout = setTimeout(() => {
+                    const pendingTransfers = dataCache.trasladosPendientes.filter(t => t.estado === 'Pendiente');
+                    const results = pendingTransfers.filter(t => t.nombreAlumno.toLowerCase().includes(searchTerm));
+
+                    if (results.length > 0) {
+                        results.forEach(transfer => {
+                            const needsFixing = !transfer.hasOwnProperty('cicloOrigen') || !transfer.hasOwnProperty('fechaFinAulaDestino');
+                            const div = document.createElement('div');
+                            div.className = 'p-3 border-b cursor-pointer hover:bg-gray-100 text-sm flex justify-between items-center';
+                            div.innerHTML = `
+                                <span>${transfer.nombreAlumno} (De: ${transfer.aulaOrigen} | A: ${transfer.aulaDestino})</span>
+                                ${needsFixing ? '<span class="text-xs font-bold text-red-500 bg-red-100 px-2 py-1 rounded-full">Requiere Corrección</span>' : ''}
+                            `;
+                            div.addEventListener('click', () => selectTransferForCorrection(transfer));
+                            searchResultsContainer.appendChild(div);
+                        });
+                    } else {
+                        searchResultsContainer.innerHTML = '<p class="p-3 text-sm text-gray-500">No se encontraron traslados pendientes para ese alumno.</p>';
+                    }
+                }, 300);
+            });
+            
+            function selectTransferForCorrection(transfer) {
+                selectedTransfer = transfer;
+                searchInput.value = '';
+                searchResultsContainer.innerHTML = '';
+
+                const alumno = dataCache.alumnos.find(a => a.id === transfer.alumnoId);
+                const aulaDestino = dataCache.aulas.find(a => a.codigoAula === transfer.aulaDestino);
+
+                if (!alumno || !aulaDestino) {
+                    showNotification('Error: No se encontraron los datos del alumno o del aula de destino.', 'error');
+                    return;
+                }
+
+                // Poblar el formulario
+                studentNameDisplay.textContent = alumno.nombreCompleto;
+                originAulaDisplay.textContent = transfer.aulaOrigen;
+                destinationAulaDisplay.textContent = transfer.aulaDestino;
+                
+                const cicloOrigen = alumno.cicloInscrito;
+                cicloOrigenInput.value = cicloOrigen;
+
+                const fechaFinDate = safeToDate(aulaDestino.fechaFin);
+                if (fechaFinDate) {
+                    fechaFinInput.value = fechaFinDate.toISOString().split('T')[0];
+                } else {
+                    fechaFinInput.value = '';
+                    showNotification('Advertencia: El aula de destino no tiene una fecha de finalización válida.', 'error');
+                }
+                
+                // Poblar el select de ciclo de destino
+                const isRepeating = aulaDestino.ciclo === cicloOrigen;
+                const cicloDestinoCorrecto = isRepeating ? cicloOrigen : cicloOrigen + 1;
+                
+                cicloDestinoSelect.innerHTML = '';
+                const possibleCiclos = new Set([cicloOrigen, cicloOrigen + 1, cicloDestinoCorrecto, aulaDestino.ciclo]);
+                [...possibleCiclos].sort((a,b)=>a-b).forEach(ciclo => {
+                     const option = document.createElement('option');
+                     option.value = ciclo;
+                     option.textContent = `Ciclo ${ciclo}`;
+                     if (ciclo === cicloDestinoCorrecto) {
+                         option.selected = true;
+                         option.textContent += ' (Recomendado)';
+                     }
+                     cicloDestinoSelect.appendChild(option);
+                });
+
+                correctionFormContainer.classList.remove('hidden');
+            }
+
+            // --- Lógica de los Botones del Formulario ---
+            cancelBtn.addEventListener('click', () => {
+                correctionFormContainer.classList.add('hidden');
+                selectedTransfer = null;
+            });
+
+            correctionForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!selectedTransfer) return;
+
+                const updatedData = {
+                    cicloOrigen: parseInt(cicloOrigenInput.value),
+                    cicloDestino: parseInt(cicloDestinoSelect.value),
+                    fechaFinAulaDestino: Timestamp.fromDate(new Date(fechaFinInput.value + 'T00:00:00'))
+                };
+
+                const confirmed = await customConfirm(`¿Estás seguro de que quieres guardar estas correcciones para ${selectedTransfer.nombreAlumno}?`);
+                if (!confirmed) return;
+
+                const saveBtn = document.getElementById('save-correction-btn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<div class="loader inline-block"></div> Guardando...';
+
+                try {
+                    const transferRef = doc(db, "trasladosPendientes", selectedTransfer.id);
+                    await updateDoc(transferRef, updatedData);
+
+                    await logAction('Saneamiento de Traslado Individual', `Se corrigió el traslado ID: ${selectedTransfer.id} para el alumno ${selectedTransfer.nombreAlumno}.`);
+                    showNotification('¡Traslado corregido exitosamente!', 'success');
+                    
+                    correctionFormContainer.classList.add('hidden');
+                    selectedTransfer = null;
+
+                } catch (error) {
+                    showNotification(`Error al guardar la corrección: ${error.message}`, 'error');
+                    console.error(error);
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = 'Guardar Corrección';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

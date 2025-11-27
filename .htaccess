@@ -1,0 +1,21 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ----------------------------------------------------------------------
+    # FORZAR HTTPS
+    # ----------------------------------------------------------------------
+    # Si la conexión NO es segura (HTTPS off), redirigir a la misma URL pero con https://
+    # Esto asegura que nadie pueda entrar por http:// inseguro.
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # ----------------------------------------------------------------------
+    # OPCIONAL: Seguridad adicional (Recomendado)
+    # ----------------------------------------------------------------------
+    # Evita que otros sitios incrusten tu web en un iframe (Clickjacking protection),
+    # excepto tu propio dominio.
+    Header always set X-Frame-Options "SAMEORIGIN"
+    
+    # Bloquea tipos de contenido MIME incorrectos
+    Header always set X-Content-Type-Options "nosniff"
+</IfModule>

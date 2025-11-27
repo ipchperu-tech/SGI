@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Backup y Restauración</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold text-gray-800 mb-6">Backup y Restauración Manual</h2>
+        
+        <div class="card p-8">
+            <div class="text-center border-4 border-dashed border-red-200 rounded-lg p-8">
+                <i class="fas fa-hdd text-6xl text-red-500"></i>
+                <h3 class="text-2xl font-bold text-red-700 mt-4">¡Atención! Zona de Alto Riesgo</h3>
+                <p class="text-gray-600 mt-2 max-w-xl mx-auto">Las acciones en este módulo son irreversibles. Una restauración reemplazará **toda la base de datos actual**. Procede únicamente si estás completamente seguro.</p>
+            </div>
+
+            <!-- Opción 1: Crear Backup Manual -->
+            <div class="mt-8 pt-6 border-t">
+                <h3 class="font-bold text-lg mb-4">Paso 1: Crear un Backup Manual</h3>
+                <p class="text-sm text-gray-600 mb-4">Haz clic en el botón para generar y descargar un archivo `.json` con una copia de seguridad completa de toda la base de datos. Guarda este archivo en un lugar seguro.</p>
+                <button id="backup-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-md w-full flex items-center justify-center gap-2">
+                    <i class="fas fa-download"></i>
+                    Crear y Descargar Backup Manual Completo
+                </button>
+            </div>
+
+            <!-- Opción 2: Restaurar desde archivo -->
+            <div class="mt-8 pt-6 border-t">
+                <h3 class="font-bold text-lg mb-4">Paso 2: Restaurar desde un archivo (.json)</h3>
+                 <p class="text-sm text-gray-600 mb-4">Selecciona el archivo de backup `.json` que creaste en el paso anterior. Esta acción borrará todos los datos actuales y los reemplazará con los del archivo.</p>
+                <div class="flex items-center gap-4">
+                    <input type="file" id="backup-file-input" accept=".json" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100">
+                    <button id="restore-from-file-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md text-sm whitespace-nowrap disabled:opacity-50" disabled>Restaurar Archivo</button>
+                </div>
+            </div>
+
+            <div id="progress-container" class="mt-8 hidden">
+                <h3 class="font-bold text-lg mb-4">Progreso de la Restauración:</h3>
+                <div id="progress-log" class="bg-gray-800 text-white font-mono text-xs p-4 rounded-lg max-h-64 overflow-y-auto">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, writeBatch, Timestamp, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+            authDomain: "bdv3-ipch.firebaseapp.com",
+            projectId: "bdv3-ipch",
+            storageBucket: "bdv3-ipch.appspot.com",
+            messagingSenderId: "993842726107",
+            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        function showNotification(message, type = 'success', duration = 5000) {
+            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+        }
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const confirmId = Math.random().toString(36).substring(2, 15);
+                const listener = (event) => {
+                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
+                        window.removeEventListener('message', listener);
+                        resolve(event.data.result);
+                    }
+                };
+                window.addEventListener('message', listener);
+                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const progressContainer = document.getElementById('progress-container');
+            const progressLog = document.getElementById('progress-log');
+            const fileInput = document.getElementById('backup-file-input');
+            const restoreFromFileBtn = document.getElementById('restore-from-file-btn');
+            const createBackupBtn = document.getElementById('backup-btn');
+            let backupDataFromFile = null;
+
+            const COLLECTIONS_TO_PROCESS = [
+                'usuarios', 'docentes', 'alumnos', 'aulas', 
+                'historialAlumnos', 'historialCambios', 'historialCarteras', 
+                'seguimientos', 'trasladosPendientes', 'asistencia_eventos',
+                'systemInfo' 
+            ];
+
+            function log(message, isError = false) {
+                const p = document.createElement('p');
+                p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                if (isError) p.className = 'text-red-400';
+                progressLog.appendChild(p);
+                progressLog.scrollTop = progressLog.scrollHeight;
+            }
+
+            // --- Lógica para Crear Backup Manual ---
+            createBackupBtn.addEventListener('click', async () => {
+                const confirmed = await customConfirm("Esto generará un archivo de respaldo manual con toda la base de datos. ¿Continuar?");
+                if (!confirmed) return;
+                showNotification("Generando backup manual...", "info");
+                try {
+                    const backupData = {};
+                    for (const name of COLLECTIONS_TO_PROCESS) {
+                        const snapshot = await getDocs(collection(db, name));
+                        backupData[name] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    }
+                    const jsonString = JSON.stringify(backupData, (key, value) => {
+                        if (value && typeof value === 'object' && value.seconds !== undefined) {
+                             return new Date(value.seconds * 1000).toISOString();
+                        }
+                        return value;
+                    }, 2);
+
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    a.href = url;
+                    a.download = `SGI_Backup_Manual_${timestamp}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showNotification("¡Backup manual descargado exitosamente!", "success");
+                } catch (error) {
+                    showNotification("Error al crear el backup manual.", "error");
+                    console.error("Error al crear backup:", error);
+                }
+            });
+
+
+            // --- Lógica para Restaurar desde Archivo ---
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file && file.type === "application/json") {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            backupDataFromFile = JSON.parse(e.target.result);
+                            restoreFromFileBtn.disabled = false;
+                            showNotification("Archivo de backup cargado y listo para restaurar.", "success");
+                        } catch (error) {
+                            showNotification("Error: El archivo no es un JSON válido.", "error");
+                            backupDataFromFile = null;
+                            restoreFromFileBtn.disabled = true;
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    showNotification("Por favor, selecciona un archivo .json válido.", "error");
+                    backupDataFromFile = null;
+                    restoreFromFileBtn.disabled = true;
+                }
+            });
+
+            restoreFromFileBtn.addEventListener('click', () => {
+                if (!backupDataFromFile) return;
+                executeRestore(backupDataFromFile, restoreFromFileBtn);
+            });
+
+            async function executeRestore(data, buttonElement) {
+                const confirmed = await customConfirm("¿Estás SEGURO de que quieres borrar TODOS los datos actuales y restaurar desde este backup? Esta acción no se puede deshacer.");
+                if (!confirmed) return;
+
+                buttonElement.disabled = true;
+                buttonElement.textContent = 'Restaurando...';
+                progressContainer.classList.remove('hidden');
+                progressLog.innerHTML = '';
+
+                try {
+                    log(`Se restaurarán las siguientes colecciones: ${COLLECTIONS_TO_PROCESS.join(', ')}`);
+
+                    for (const collectionName of COLLECTIONS_TO_PROCESS) {
+                        if (data[collectionName]) {
+                            log(`--- Iniciando restauración de '${collectionName}' ---`);
+                            
+                            log(`Borrando datos antiguos de '${collectionName}'...`);
+                            const existingDocsSnapshot = await getDocs(collection(db, collectionName));
+                            if (!existingDocsSnapshot.empty) {
+                                let deletionBatch = writeBatch(db);
+                                let deleteCount = 0;
+                                for (const docSnapshot of existingDocsSnapshot.docs) {
+                                    deletionBatch.delete(docSnapshot.ref);
+                                    deleteCount++;
+                                    if (deleteCount % 499 === 0) {
+                                        await deletionBatch.commit();
+                                        deletionBatch = writeBatch(db);
+                                    }
+                                }
+                                if (deleteCount > 0 && deleteCount % 499 !== 0) {
+                                    await deletionBatch.commit();
+                                }
+                                log(`${deleteCount} documentos antiguos borrados.`);
+                            } else {
+                                log(`La colección '${collectionName}' ya estaba vacía.`);
+                            }
+
+                            const documents = data[collectionName];
+                            if (documents && documents.length > 0) {
+                                log(`Escribiendo ${documents.length} nuevos documentos...`);
+                                let writeOpBatch = writeBatch(db);
+                                let writeCount = 0;
+                                for (const docData of documents) {
+                                    const docId = docData.id;
+                                    const dataToSet = { ...docData };
+                                    delete dataToSet.id;
+
+                                    Object.keys(dataToSet).forEach(key => {
+                                        if (typeof dataToSet[key] === 'string' && dataToSet[key].match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)) {
+                                            dataToSet[key] = Timestamp.fromDate(new Date(dataToSet[key]));
+                                        }
+                                    });
+
+                                    const docRef = doc(db, collectionName, docId);
+                                    writeOpBatch.set(docRef, dataToSet);
+                                    writeCount++;
+                                    if (writeCount % 499 === 0) {
+                                        await writeOpBatch.commit();
+                                        writeOpBatch = writeBatch(db);
+                                    }
+                                }
+                                if (writeCount > 0 && writeCount % 499 !== 0) {
+                                    await writeOpBatch.commit();
+                                }
+                            }
+                            log(`Restauración de '${collectionName}' completada.`);
+                        } else {
+                            log(`La colección '${collectionName}' no se encontró en el archivo de backup. Omitiendo.`);
+                        }
+                    }
+
+                    log('--- ¡PROCESO DE RESTAURACIÓN COMPLETADO! ---');
+                    showNotification("¡La base de datos se ha restaurado exitosamente! El sistema se recargará...", "success");
+                    
+                    // MEJORA: Recargar toda la página principal del SGI después de 3 segundos
+                    setTimeout(() => {
+                        window.parent.location.reload(true);
+                    }, 3000);
+
+                } catch (error) {
+                    log(`ERROR CRÍTICO: ${error.message}`, true);
+                    console.error("Error durante la restauración:", error);
+                    showNotification("Ocurrió un error crítico durante la restauración. Revisa la consola.", "error");
+                } finally {
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = 'Restaurar Archivo';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+

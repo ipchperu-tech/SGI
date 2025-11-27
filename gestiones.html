@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Gestiones</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Gestión de Alumnos</h2>
+
+    <!-- Pantalla de Selección de Gestión -->
+    <div id="gestion-selector-screen" class="max-w-xl mx-auto card p-8 text-center">
+        <h3 id="gestion-greeting" class="text-2xl font-bold text-gray-800 mb-2"></h3>
+        <p class="text-gray-600 mb-6">¿Qué gestión deseas realizar hoy?</p>
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+            <select id="gestion-select" class="w-full p-3 border rounded-md">
+                <option value="inscribir">Inscribir (Nuevos)</option>
+                <option value="renovar">Renovar</option>
+                <option value="trasladar">Trasladar</option>
+                <option value="reincorporar">Reincorporar</option>
+                <option value="pausar">Pausar</option>
+                <option value="retirar">Retirar</option>
+                <option value="egresar">Egresar</option>
+                <option value="reembolsar">Reembolsar</option>
+            </select>
+            <button id="realizar-gestion-btn" class="btn-primary font-semibold py-3 px-6 rounded-md w-full sm:w-auto whitespace-nowrap">Realizar Gestión</button>
+        </div>
+    </div>
+
+    <!-- Contenedor para los formularios de gestión -->
+    <div id="forms-container">
+        <!-- Pestaña de Inscribir -->
+        <div id="form-container-inscribir" class="form-container hidden">
+            <div class="card p-6 max-w-xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Inscribir Alumno a un Curso</h3>
+                    <button type="button" class="back-to-selector-btn text-sm text-gray-500 hover:text-red-600">&larr; Volver a seleccionar</button>
+                </div>
+                <form id="form-inscribir" class="space-y-4">
+                    <input type="text" id="search-alumno-inscribir" placeholder="Buscar Alumno por Nombre o DNI (Estado: Registrado)..." class="w-full p-2 border rounded">
+                    <div id="results-inscribir" class="space-y-2"></div>
+                    <div id="inscribir-details" class="hidden space-y-4">
+                        <p>Inscribiendo a: <strong id="alumno-name-inscribir"></strong></p>
+                        <select id="curso-inscribir-select" name="cursoInscrito" class="w-full p-2 border rounded" required>
+                            <option value="" disabled selected>Seleccione el curso</option>
+                            <option value="Chino General" data-tipo="CH-GRL">Chino General</option>
+                            <option value="Chino para Niños" data-tipo="CH-N">Chino para Niños</option>
+                            <option value="Chino Privado" data-tipo="CH-P">Chino Privado</option>
+                            <option value="Chino Corporativo" data-tipo="CH-C">Chino Corporativo</option>
+                            <option value="Importaciones Corto" data-tipo="CI-C">Importaciones Corto</option>
+                            <option value="Importaciones Largo" data-tipo="CI-L">Importaciones Largo</option>
+                            <option value="Español" data-tipo="CE">Español</option>
+                        </select>
+                        <select name="aulaActual" id="aula-inscribir-select" class="w-full p-2 border rounded" required></select>
+                        <input type="number" name="cicloInscrito" id="ciclo-inscribir-input" class="w-full p-2 border rounded bg-gray-100" readonly required>
+                        
+                        <div class="pt-4 border-t">
+                            <h4 class="text-md font-semibold mb-2 text-gray-700">Información de Pago</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="number" name="montoPagado" placeholder="Monto Pagado (S/.)" step="0.01" class="w-full p-2 border rounded" required>
+                                <select name="medioDePago" class="w-full p-2 border rounded" required>
+                                    <option value="" disabled selected>Medio de Pago</option>
+                                    <option>Transferencia Bancaria</option>
+                                    <option>Transferencia Interbancaria</option>
+                                    <option>Tarjeta Online DlocalGo</option>
+                                    <option>Tarjeta Online MP</option>
+                                    <option>Yape</option>
+                                    <option>Plin</option>
+                                    <option>PayPal</option>
+                                </select>
+                                <input type="text" name="banco" placeholder="Banco (Opcional)" class="w-full p-2 border rounded">
+                                <input type="text" name="numeroOperacion" placeholder="N° de Operación" class="w-full p-2 border rounded" required>
+                                <input type="date" name="fechaPago" class="w-full p-2 border rounded" required>
+                                <input type="time" name="horaPago" class="w-full p-2 border rounded" required>
+                                <div class="md:col-span-2 grid grid-cols-2 gap-4">
+                                    <select name="tipoDocumentoPago" class="w-full p-2 border rounded">
+                                        <option value="Boleta">Boleta</option>
+                                        <option value="Factura">Factura</option>
+                                    </select>
+                                    <input type="text" name="numeroDocumentoPago" placeholder="N° de Documento" class="w-full p-2 border rounded">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary w-full p-2 rounded">Confirmar Inscripción</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Pestaña de Renovar -->
+        <div id="form-container-renovar" class="form-container hidden">
+            <div class="card p-6 max-w-xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Renovar Alumno al Siguiente Ciclo</h3>
+                    <button type="button" class="back-to-selector-btn text-sm text-gray-500 hover:text-red-600">&larr; Volver a seleccionar</button>
+                </div>
+                <form id="form-renovar" class="space-y-4">
+                    <input type="text" id="search-alumno-renovar" placeholder="Buscar Alumno por Nombre o DNI..." class="w-full p-2 border rounded">
+                    <div id="results-renovar" class="space-y-2"></div>
+                    <div id="renovar-details" class="hidden space-y-4">
+                        <p>Renovando a: <strong id="alumno-name-renovar"></strong></p>
+                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
+                            <p>Aula Actual: <strong id="aula-actual-renovar"></strong></p>
+                            <p>Ciclo Actual: <strong id="ciclo-actual-renovar"></strong></p>
+                            <p class="mt-2 font-bold text-lg">Nuevo Ciclo: <strong id="ciclo-nuevo-renovar" class="text-green-600"></strong></p>
+                        </div>
+                        <textarea name="motivo" placeholder="Observación o motivo de la renovación..." class="w-full p-2 border rounded" rows="2" required></textarea>
+                        
+                        <div class="pt-4 border-t">
+                            <h4 class="text-md font-semibold mb-2 text-gray-700">Información de Pago</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="number" name="montoPagado" placeholder="Monto Pagado (S/.)" step="0.01" class="w-full p-2 border rounded" required>
+                                <select name="medioDePago" class="w-full p-2 border rounded" required>
+                                    <option value="" disabled selected>Medio de Pago</option>
+                                    <option>Transferencia Bancaria</option>
+                                    <option>Transferencia Interbancaria</option>
+                                    <option>Tarjeta Online DlocalGo</option>
+                                    <option>Tarjeta Online MP</option>
+                                    <option>Yape</option>
+                                    <option>Plin</option>
+                                    <option>PayPal</option>
+                                </select>
+                                <input type="text" name="banco" placeholder="Banco (Opcional)" class="w-full p-2 border rounded">
+                                <input type="text" name="numeroOperacion" placeholder="N° de Operación" class="w-full p-2 border rounded" required>
+                                <input type="date" name="fechaPago" class="w-full p-2 border rounded" required>
+                                <input type="time" name="horaPago" class="w-full p-2 border rounded" required>
+                                <div class="md:col-span-2 grid grid-cols-2 gap-4">
+                                    <select name="tipoDocumentoPago" class="w-full p-2 border rounded">
+                                        <option value="Boleta">Boleta</option>
+                                        <option value="Factura">Factura</option>
+                                    </select>
+                                    <input type="text" name="numeroDocumentoPago" placeholder="N° de Documento" class="w-full p-2 border rounded">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary w-full p-2 rounded">Confirmar Renovación</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Pestaña de Trasladar -->
+        <div id="form-container-trasladar" class="form-container hidden">
+            <div class="card p-6 max-w-xl mx-auto">
+                 <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Trasladar Alumno</h3>
+                    <button type="button" class="back-to-selector-btn text-sm text-gray-500 hover:text-red-600">&larr; Volver a seleccionar</button>
+                </div>
+                <form id="form-traslado" class="space-y-4">
+                    <input type="text" id="search-alumno-traslado" placeholder="Buscar Alumno Activo por Nombre o DNI..." class="w-full p-2 border rounded">
+                    <div id="results-traslado" class="space-y-2"></div>
+
+                    <div id="traslado-details" class="hidden space-y-4">
+                        <p>Trasladando a: <strong id="alumno-name-traslado"></strong></p>
+                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                            <p class="text-sm">Desde el aula: <strong id="aula-origen-traslado"></strong></p>
+                            <p class="text-sm">Ciclo actual: <strong id="ciclo-origen-traslado"></strong></p>
+                        </div>
+                        
+                        <div id="traslado-type-selector" class="space-y-2">
+                            <label class="block text-sm font-medium">Tipo de Traslado</label>
+                            <select id="tipo-traslado-select" class="w-full p-2 border rounded">
+                                <option value="cobro">Traslado por Cobro</option>
+                                <option value="academico_inmediato">Traslado Académico (Inmediato)</option>
+                                <option value="academico_programado">Traslado Académico (Programado)</option>
+                            </select>
+                        </div>
+
+                        <div id="traslado-cobro-intention-selector" class="hidden space-y-2">
+                            <label class="block text-sm font-medium">Intención del Traslado</label>
+                            <div class="flex gap-4 p-2 bg-gray-100 rounded-md">
+                                <label class="flex items-center gap-2"><input type="radio" name="trasladoIntention" value="avanza" checked> Avanza al siguiente ciclo</label>
+                                <label class="flex items-center gap-2"><input type="radio" name="trasladoIntention" value="repite"> Repite el ciclo actual</label>
+                            </div>
+                        </div>
+
+                        <select id="aula-destino-select" name="aulaDestino" class="w-full p-2 border rounded" required></select>
+                        <textarea name="motivo" placeholder="Motivo del traslado..." class="w-full p-2 border rounded" rows="2" required></textarea>
+                        
+                        <div id="payment-section-traslado" class="pt-4 border-t hidden">
+                            <h4 class="text-md font-semibold mb-2 text-gray-700">Información de Pago (Opcional)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="number" name="montoPagado" placeholder="Monto Pagado (S/.)" step="0.01" class="w-full p-2 border rounded">
+                                <select name="medioDePago" class="w-full p-2 border rounded">
+                                    <option value="">Medio de Pago</option>
+                                    <option>Transferencia Bancaria</option>
+                                    <option>Transferencia Interbancaria</option>
+                                    <option>Tarjeta Online DlocalGo</option>
+                                    <option>Tarjeta Online MP</option>
+                                    <option>Yape</option>
+                                    <option>Plin</option>
+                                    <option>PayPal</option>
+                                </select>
+                                <input type="text" name="banco" placeholder="Banco (Opcional)" class="w-full p-2 border rounded">
+                                <input type="text" name="numeroOperacion" placeholder="N° de Operación" class="w-full p-2 border rounded">
+                                <input type="date" name="fechaPago" class="w-full p-2 border rounded">
+                                <input type="time" name="horaPago" class="w-full p-2 border rounded">
+                                <div class="md:col-span-2 grid grid-cols-2 gap-4">
+                                    <select name="tipoDocumentoPago" class="w-full p-2 border rounded">
+                                        <option value="Boleta">Boleta</option>
+                                        <option value="Factura">Factura</option>
+                                    </select>
+                                    <input type="text" name="numeroDocumentoPago" placeholder="N° de Documento" class="w-full p-2 border rounded">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary w-full p-2 rounded">Confirmar Traslado</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pestaña de Reincorporar -->
+        <div id="form-container-reincorporar" class="form-container hidden">
+            <div class="card p-6 max-w-xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Reincorporar Alumno</h3>
+                    <button type="button" class="back-to-selector-btn text-sm text-gray-500 hover:text-red-600">&larr; Volver a seleccionar</button>
+                </div>
+                <form id="form-reincorporar" class="space-y-4">
+                    <input type="text" id="search-alumno-reincorporar" placeholder="Buscar Alumno Pausado o Retirado..." class="w-full p-2 border rounded">
+                    <div id="results-reincorporar" class="space-y-2"></div>
+                    <div id="reincorporar-details" class="hidden space-y-4">
+                        <p>Reincorporando a: <strong id="alumno-name-reincorporar"></strong></p>
+                        <select id="aula-reincorporar-select" name="aulaReincorporar" class="w-full p-2 border rounded" required></select>
+                        <textarea name="motivo" placeholder="Motivo de la reincorporación..." class="w-full p-2 border rounded" rows="2" required></textarea>
+                        
+                        <div class="pt-4 border-t">
+                            <h4 class="text-md font-semibold mb-2 text-gray-700">Información de Pago</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="number" name="montoPagado" placeholder="Monto Pagado (S/.)" step="0.01" class="w-full p-2 border rounded" required>
+                                <select name="medioDePago" class="w-full p-2 border rounded" required>
+                                    <option value="" disabled selected>Medio de Pago</option>
+                                    <option>Transferencia Bancaria</option>
+                                    <option>Transferencia Interbancaria</option>
+                                    <option>Tarjeta Online DlocalGo</option>
+                                    <option>Tarjeta Online MP</option>
+                                    <option>Yape</option>
+                                    <option>Plin</option>
+                                    <option>PayPal</option>
+                                </select>
+                                <input type="text" name="banco" placeholder="Banco (Opcional)" class="w-full p-2 border rounded">
+                                <input type="text" name="numeroOperacion" placeholder="N° de Operación" class="w-full p-2 border rounded" required>
+                                <input type="date" name="fechaPago" class="w-full p-2 border rounded" required>
+                                <input type="time" name="horaPago" class="w-full p-2 border rounded" required>
+                                <div class="md:col-span-2 grid grid-cols-2 gap-4">
+                                    <select name="tipoDocumentoPago" class="w-full p-2 border rounded">
+                                        <option value="Boleta">Boleta</option>
+                                        <option value="Factura">Factura</option>
+                                    </select>
+                                    <input type="text" name="numeroDocumentoPago" placeholder="N° de Documento" class="w-full p-2 border rounded">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary w-full p-2 rounded">Confirmar Reincorporación</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pestañas de Pausa y Retiro -->
+        <div id="form-container-pausar" class="form-container hidden">
+            <div class="card p-6 max-w-xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Pausar Alumno</h3>
+                    <button type="button" class="back-to-selector-btn text-sm text-gray-500 hover:text-red-600">&larr; Volver a seleccionar</button>
+                </div>
+                <form id="form-pausa" class="space-y-4">
+                    <input type="text" id="search-alumno-pausa" placeholder="Buscar Alumno Activo por Nombre o DNI..." class="w-full p-2 border rounded">
+                    <div id="results-pausa" class="space-y-2"></div>
+                    <div id="pausa-details" class="hidden space-y-4">
+                        <p>Pausando a: <strong id="alumno-name-pausa"></strong></p>
+                        <textarea name="motivo" placeholder="Motivo de la pausa (ej: 'Viaje familiar')..." class="w-full p-2 border rounded" rows="3" required></textarea>
+                        <button type="submit" class="btn-primary w-full p-2 rounded">Confirmar Pausa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div id="form-container-retirar" class="form-container hidden">
+            <div class="card p-6 max-w-xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Retirar Alumno</h3>
+                    <button type="button" class="back-to-selector-btn text-sm text-gray-500 hover:text-red-600">&larr; Volver a seleccionar</button>
+                </div>
+                <form id="form-retiro" class="space-y-4">
+                    <input type="text" id="search-alumno-retiro" placeholder="Buscar Alumno Activo por Nombre o DNI..." class="w-full p-2 border rounded">
+                    <div id="results-retiro" class="space-y-2"></div>
+                    <div id="retiro-details" class="hidden space-y-4">
+                        <p>Retirando a: <strong id="alumno-name-retiro"></strong></p>
+                        <textarea name="motivo" placeholder="Motivo del retiro (ej: 'Dificultades económicas')..." class="w-full p-2 border rounded" rows="3" required></textarea>
+                        <button type="submit" class="btn-primary w-full p-2 rounded">Confirmar Retiro</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pestaña de Egresar -->
+        <div id="form-container-egresar" class="form-container hidden">
+            <div class="card p-6 max-w-xl mx-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Egresar Alumno</h3>
+                    <button type="button" class="back-to-selector-btn text-sm text-gray-500 hover:text-red-600">&larr; Volver a seleccionar</button>
+                </div>
+                <form id="form-egresar" class="space-y-4">
+                    <input type="text" id="search-alumno-egresar" placeholder="Buscar Alumno Activo por Nombre o DNI..." class="w-full p-2 border rounded">
+                    <div id="results-egresar" class="space-y-2"></div>
+                    <div id="egresar-details" class="hidden space-y-4">
+                        <p>Egresando a: <strong id="alumno-name-egresar"></strong></p>
+                        <div class="p-3 bg-green-50 border border-green-200 rounded-md">
+                            <p class="text-sm">Curso Actual: <strong id="curso-actual-egresar"></strong></p>
+                            <p class="text-sm">Ciclo Actual: <strong id="ciclo-actual-egresar"></strong></p>
+                        </div>
+                        <textarea name="motivo" placeholder="Motivo del egreso..." class="w-full p-2 border rounded" rows="3" required>Finalización exitosa del plan de estudios.</textarea>
+                        <button type="submit" class="btn-primary w-full p-2 rounded">Confirmar Egreso</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pestaña de Reembolsar -->
+        <div id="form-container-reembolsar" class="form-container hidden">
+            <div class="card p-6 max-w-xl mx-auto">
+                 <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Retiro con Reembolso</h3>
+                    <button type="button" class="back-to-selector-btn text-sm text-gray-500 hover:text-red-600">&larr; Volver a seleccionar</button>
+                </div>
+                <form id="form-reembolso" class="space-y-4">
+                    <input type="text" id="search-alumno-reembolso" placeholder="Buscar Alumno Activo por Nombre o DNI..." class="w-full p-2 border rounded">
+                    <div id="results-reembolso" class="space-y-2"></div>
+                    <div id="reembolso-details" class="hidden space-y-4">
+                        <p>Reembolsando a: <strong id="alumno-name-reembolso"></strong></p>
+                        <div id="last-payment-info" class="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm">Cargando último pago...</div>
+                        <textarea name="motivo" placeholder="Motivo del retiro y reembolso..." class="w-full p-2 border rounded" rows="2" required></textarea>
+                        
+                        <div class="pt-4 border-t">
+                            <h4 class="text-md font-semibold mb-2 text-gray-700">Información del Reembolso</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="number" name="montoReembolsado" placeholder="Monto a Reembolsar (S/.)" step="0.01" class="w-full p-2 border rounded" required>
+                                <select name="medioDeReembolso" class="w-full p-2 border rounded" required>
+                                    <option value="" disabled selected>Medio de Reembolso</option>
+                                    <option>Transferencia Bancaria</option>
+                                    <option>Yape</option>
+                                    <option>Plin</option>
+                                </select>
+                                <input type="text" name="numeroOperacionReembolso" placeholder="N° de Operación del Reembolso" class="w-full p-2 border rounded md:col-span-2" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary w-full p-2 rounded">Confirmar Retiro y Reembolso</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, Timestamp, addDoc, runTransaction, writeBatch, getDoc, orderBy, limit, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuración de Firebase ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+            authDomain: "bdv3-ipch.firebaseapp.com",
+            projectId: "bdv3-ipch",
+            storageBucket: "bdv3-ipch.firebasestorage.app",
+            messagingSenderId: "993842726107",
+            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- Cachés de datos en tiempo real ---
+        let dataCache = {
+            alumnos: [],
+            aulas: []
+        };
+
+        // --- Ayudantes de Comunicación con el Frame Principal ---
+        function showNotification(message, type = 'success', duration = 5000) {
+            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+        }
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const confirmId = Math.random().toString(36).substring(2, 15);
+                const listener = (event) => {
+                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
+                        window.removeEventListener('message', listener);
+                        resolve(event.data.result);
+                    }
+                };
+                window.addEventListener('message', listener);
+                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
+            });
+        }
+        
+        // --- Funciones Generales y de Ayuda ---
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+        const currentUserEmail = getQueryParam('user') || 'sistema@sgi.com';
+        const currentUserRole = getQueryParam('role');
+
+        async function logAction(accion, descripcion) {
+            try {
+                await addDoc(collection(db, 'historialCambios'), {
+                    fecha: Timestamp.now(), 
+                    usuario: currentUserEmail, 
+                    accion: accion, 
+                    descripcion: descripcion
+                });
+            } catch (error) { console.error("Error logging action:", error); }
+        }
+
+        async function logStudentHistory(transaction, alumnoId, nombreAlumno, tipoAccion, descripcion, motivo, detalles = {}) {
+            const historyRef = doc(collection(db, 'historialAlumnos'));
+            const logData = {
+                alumnoId, nombreAlumno,
+                fecha: Timestamp.now(),
+                tipoAccion, descripcion, motivo,
+                usuario: currentUserEmail,
+                detalles
+            };
+            transaction.set(historyRef, logData);
+        }
+        
+        function getPaymentDetailsFromForm(form) {
+            if (!form.elements.montoPagado) return {};
+            const montoPagado = form.elements.montoPagado.value;
+            if (!montoPagado || parseFloat(montoPagado) <= 0) return {};
+            
+            return {
+                montoPagado: parseFloat(montoPagado),
+                medioDePago: form.elements.medioDePago.value || 'N/A',
+                banco: form.elements.banco.value || 'N/A',
+                numeroOperacion: form.elements.numeroOperacion.value || 'N/A',
+                fechaPago: form.elements.fechaPago.value || 'N/A',
+                horaPago: form.elements.horaPago.value || 'N/A',
+                tipoDocumentoPago: form.elements.tipoDocumentoPago.value || 'Boleta',
+                numeroDocumentoPago: form.elements.numeroDocumentoPago.value || 'N/A'
+            };
+        }
+
+        // --- Búsqueda y renderizado de resultados (Ahora desde caché) ---
+        function searchAlumnosFromCache(term, status = ['Activo']) {
+            const lowerCaseTerm = term.toLowerCase();
+            return dataCache.alumnos.filter(alumno => {
+                const statusMatch = status.includes(alumno.estado);
+                const termMatch = alumno.nombreCompleto.toLowerCase().includes(lowerCaseTerm) || (alumno.documentoIdentidad && alumno.documentoIdentidad.includes(term));
+                return statusMatch && termMatch;
+            });
+        }
+
+        function setupSearch(inputId, resultsId, detailsId, onSelect, status) {
+            const searchInput = document.getElementById(inputId);
+            const resultsContainer = document.getElementById(resultsId);
+            
+            searchInput.addEventListener('input', () => {
+                const term = searchInput.value.trim();
+                document.getElementById(detailsId).classList.add('hidden');
+                resultsContainer.innerHTML = '';
+
+                if (term.length < 3) return;
+
+                const alumnos = searchAlumnosFromCache(term, status);
+                
+                if (alumnos.length === 0) {
+                    resultsContainer.innerHTML = `<p class="text-sm text-gray-500 p-2">No se encontraron alumnos con estado: ${status.join(', ')}.</p>`;
+                } else {
+                    alumnos.forEach(alumno => {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 border rounded cursor-pointer hover:bg-gray-100';
+                        div.textContent = `${alumno.nombreCompleto} (${alumno.documentoIdentidad || 'Sin DNI'})`;
+                        div.addEventListener('click', () => {
+                            searchInput.value = alumno.nombreCompleto;
+                            resultsContainer.innerHTML = '';
+                            onSelect(alumno);
+                        });
+                        resultsContainer.appendChild(div);
+                    });
+                }
+            });
+        }
+        
+        async function getFinalNoteForStudent(alumnoId, aulaCodigo) {
+            if (!aulaCodigo || !alumnoId) return null;
+            const aula = dataCache.aulas.find(a => a.codigoAula === aulaCodigo);
+            if (aula && aula.notas && typeof aula.notas[alumnoId] !== 'undefined') {
+                return aula.notas[alumnoId];
+            }
+            return null;
+        }
+
+        // --- Lógica de Inscripción (Ahora desde caché) ---
+        let selectedAlumnoInscribir = null;
+        setupSearch('search-alumno-inscribir', 'results-inscribir', 'inscribir-details', (alumno) => {
+            selectedAlumnoInscribir = alumno;
+            document.getElementById('alumno-name-inscribir').textContent = alumno.nombreCompleto;
+            document.getElementById('inscribir-details').classList.remove('hidden');
+        }, ['Registrado']);
+        
+        const cursoInscribirSelect = document.getElementById('curso-inscribir-select');
+        const aulaInscribirSelect = document.getElementById('aula-inscribir-select');
+        const cicloInscribirInput = document.getElementById('ciclo-inscribir-input');
+
+        cursoInscribirSelect.addEventListener('change', () => {
+            const selectedOption = cursoInscribirSelect.options[cursoInscribirSelect.selectedIndex];
+            const tipoAula = selectedOption.dataset.tipo;
+            aulaInscribirSelect.innerHTML = '<option value="">Buscando aulas...</option>';
+            cicloInscribirInput.value = '';
+            if (!tipoAula) return;
+            
+            const aulas = dataCache.aulas.filter(aula => 
+                aula.tipoAula === tipoAula && ["Programada", "En Curso"].includes(aula.estado)
+            ).sort((a, b) => a.ciclo - b.ciclo || a.codigoAula.localeCompare(b.codigoAula));
+
+            aulaInscribirSelect.innerHTML = '<option value="">Seleccione un aula disponible</option>';
+            aulas.forEach((aula) => {
+                aulaInscribirSelect.innerHTML += `<option value="${aula.codigoAula}" data-ciclo="${aula.ciclo}">${aula.codigoAula} (Ciclo ${aula.ciclo} - ${aula.nombreDocente})</option>`;
+            });
+        });
+
+        aulaInscribirSelect.addEventListener('change', () => {
+            const selectedOption = aulaInscribirSelect.options[aulaInscribirSelect.selectedIndex];
+            cicloInscribirInput.value = selectedOption.dataset.ciclo || '';
+        });
+
+        document.getElementById('form-inscribir').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Procesando...';
+
+            try {
+                if (!selectedAlumnoInscribir) throw new Error("Por favor, busca y selecciona un alumno.");
+                
+                const cursoInscrito = form.cursoInscrito.value;
+                const aulaActual = form.aulaActual.value;
+                const cicloInscrito = parseInt(form.cicloInscrito.value);
+                const paymentDetails = getPaymentDetailsFromForm(form);
+
+                if (!cursoInscrito || !aulaActual || isNaN(cicloInscrito) || !paymentDetails.montoPagado) {
+                    throw new Error("Por favor, completa todos los campos de la inscripción y pago.");
+                }
+                
+                const confirmed = await customConfirm(`¿Confirmas la inscripción de ${selectedAlumnoInscribir.nombreCompleto} al aula ${aulaActual}?`);
+                if (!confirmed) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Confirmar Inscripción';
+                    return;
+                }
+
+                await runTransaction(db, async (transaction) => {
+                    const alumnoRef = doc(db, 'alumnos', selectedAlumnoInscribir.id);
+                    const aula = dataCache.aulas.find(a => a.codigoAula === aulaActual);
+                    if (!aula) throw new Error("El aula seleccionada ya no existe o no está disponible.");
+                    
+                    const aulaRef = doc(db, 'aulas', aula.id);
+                    const aulaDoc = await transaction.get(aulaRef); // Leer dentro de la transacción
+                    const newCount = (aulaDoc.data().cantidadAlumnos || 0) + 1;
+                    
+                    transaction.update(aulaRef, { cantidadAlumnos: newCount });
+                    transaction.update(alumnoRef, { estado: 'Activo', aulaActual, cursoInscrito, cicloInscrito });
+                    
+                    const desc = `Inscripción inicial en el aula ${aulaActual} (Ciclo ${cicloInscrito}).`;
+                    const motivo = `Inscripción al curso ${cursoInscrito}.`;
+                    await logStudentHistory(transaction, selectedAlumnoInscribir.id, selectedAlumnoInscribir.nombreCompleto, "Inscripción", desc, motivo, { ...paymentDetails, aula: aulaActual, curso: cursoInscrito, ciclo: cicloInscrito });
+                });
+                
+                await logAction("Inscripción", `Se inscribió al alumno ${selectedAlumnoInscribir.nombreCompleto} en el aula ${aulaActual}.`);
+                showNotification('¡Alumno inscrito exitosamente!', 'success');
+                showSelectorScreen();
+
+            } catch (error) {
+                console.error("Error en la transacción de inscripción: ", error);
+                showNotification(`Ocurrió un error al inscribir: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirmar Inscripción';
+            }
+        });
+
+        // --- Lógica de Renovación (Sin cambios, ya era robusta) ---
+        let selectedAlumnoRenovar = null;
+        setupSearch('search-alumno-renovar', 'results-renovar', 'renovar-details', (alumno) => {
+            selectedAlumnoRenovar = alumno;
+            document.getElementById('alumno-name-renovar').textContent = alumno.nombreCompleto;
+            document.getElementById('aula-actual-renovar').textContent = alumno.aulaActual;
+            document.getElementById('ciclo-actual-renovar').textContent = alumno.cicloInscrito;
+            document.getElementById('ciclo-nuevo-renovar').textContent = parseInt(alumno.cicloInscrito) + 1;
+            document.getElementById('renovar-details').classList.remove('hidden');
+        }, ['Activo']);
+        document.getElementById('form-renovar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Procesando...';
+
+            try {
+                if (!selectedAlumnoRenovar) throw new Error("Por favor, selecciona un alumno.");
+                const motivo = form.motivo.value;
+                const paymentDetails = getPaymentDetailsFromForm(form);
+                if (!motivo || !paymentDetails.montoPagado) throw new Error("Completa el motivo y los datos de pago.");
+                
+                const confirmed = await customConfirm(`¿Confirmas la renovación de ${selectedAlumnoRenovar.nombreCompleto} al siguiente ciclo?`);
+                if (!confirmed) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Confirmar Renovación';
+                    return;
+                }
+
+                await runTransaction(db, async (transaction) => {
+                    const alumnoRef = doc(db, 'alumnos', selectedAlumnoRenovar.id);
+                    const alumnoDoc = await transaction.get(alumnoRef);
+                    if (!alumnoDoc.exists()) throw new Error("No se encontró al alumno.");
+                    const alumnoData = alumnoDoc.data();
+                    const cicloActual = parseInt(alumnoData.cicloInscrito);
+                    if (isNaN(cicloActual)) throw new Error("El ciclo del alumno no es válido.");
+                    const nuevoCiclo = cicloActual + 1;
+                    const desc = `Renovación pagada para el ciclo ${nuevoCiclo} en el aula ${alumnoData.aulaActual}.`;
+                    await logStudentHistory(transaction, selectedAlumnoRenovar.id, alumnoData.nombreCompleto, 'Renovación', desc, motivo, { ...paymentDetails, aula: alumnoData.aulaActual, ciclo: nuevoCiclo });
+                });
+                await logAction("Renovación", `Se registró la renovación para ${selectedAlumnoRenovar.nombreCompleto}.`);
+                showNotification('¡Renovación registrada! El estado del alumno se actualizará al procesar la cobranza del aula.', 'success');
+                showSelectorScreen();
+            } catch(error) {
+                console.error("Error en renovación:", error);
+                showNotification(`Error al registrar renovación: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirmar Renovación';
+            }
+        });
+
+        // --- INICIO DE LA CORRECCIÓN: Lógica de Traslado ---
+        let selectedAlumnoTraslado = null;
+        setupSearch('search-alumno-traslado', 'results-traslado', 'traslado-details', (alumno) => {
+            selectedAlumnoTraslado = alumno;
+            document.getElementById('alumno-name-traslado').textContent = alumno.nombreCompleto;
+            document.getElementById('aula-origen-traslado').textContent = alumno.aulaActual;
+            document.getElementById('ciclo-origen-traslado').textContent = alumno.cicloInscrito; 
+            document.getElementById('traslado-details').classList.remove('hidden');
+            document.getElementById('tipo-traslado-select').dispatchEvent(new Event('change'));
+        }, ['Activo']);
+
+        document.getElementById('tipo-traslado-select').addEventListener('change', () => {
+            const tipoTraslado = document.getElementById('tipo-traslado-select').value;
+            const cobroIntentionSelector = document.getElementById('traslado-cobro-intention-selector');
+            const paymentSection = document.getElementById('payment-section-traslado');
+            
+            cobroIntentionSelector.classList.toggle('hidden', tipoTraslado !== 'cobro');
+            paymentSection.classList.toggle('hidden', tipoTraslado === 'academico_inmediato' || tipoTraslado === 'academico_programado');
+            
+            document.querySelectorAll('input[name="trasladoIntention"]').forEach(radio => {
+                radio.onchange = () => updateAulaDestinoOptions();
+            });
+            updateAulaDestinoOptions();
+        });
+        
+        function updateAulaDestinoOptions() {
+            if (!selectedAlumnoTraslado) return;
+            const aulaOrigenData = dataCache.aulas.find(a => a.codigoAula === selectedAlumnoTraslado.aulaActual);
+            if (!aulaOrigenData) return;
+
+            const tipoTraslado = document.getElementById('tipo-traslado-select').value;
+            const aulaDestinoSelect = document.getElementById('aula-destino-select');
+            const cicloActualAlumno = parseInt(selectedAlumnoTraslado.cicloInscrito);
+            
+            let aulasCompatibles = [];
+
+            if (tipoTraslado === 'academico_inmediato') {
+                aulasCompatibles = dataCache.aulas.filter(aula => 
+                    aula.tipoAula === aulaOrigenData.tipoAula &&
+                    aula.ciclo === cicloActualAlumno &&
+                    ["Programada", "En Curso"].includes(aula.estado)
+                );
+            } else if (tipoTraslado === 'academico_programado') {
+                 aulasCompatibles = dataCache.aulas.filter(aula => 
+                    aula.tipoAula === aulaOrigenData.tipoAula &&
+                    aula.ciclo < cicloActualAlumno &&
+                    ["Programada", "En Curso"].includes(aula.estado)
+                );
+            }
+            else { // Traslado por cobro
+                const intention = document.querySelector('input[name="trasladoIntention"]:checked').value;
+                if (intention === 'avanza') {
+                    const cicloSiguiente = cicloActualAlumno + 1;
+                    aulasCompatibles = dataCache.aulas.filter(aula => 
+                        aula.tipoAula === aulaOrigenData.tipoAula &&
+                        (aula.ciclo === cicloActualAlumno || aula.ciclo === cicloSiguiente) &&
+                        ["Programada", "En Curso", "En Cobranza"].includes(aula.estado)
+                    );
+                } else { // repite
+                    aulasCompatibles = dataCache.aulas.filter(aula => 
+                        aula.tipoAula === aulaOrigenData.tipoAula &&
+                        (aula.ciclo === cicloActualAlumno || aula.ciclo === cicloActualAlumno - 1) &&
+                        ["Programada", "En Curso", "En Cobranza"].includes(aula.estado)
+                    );
+                }
+            }
+
+            aulasCompatibles.sort((a, b) => a.ciclo - b.ciclo || a.codigoAula.localeCompare(b.codigoAula));
+
+            aulaDestinoSelect.innerHTML = '<option value="">Seleccione aula de destino</option>';
+            aulasCompatibles.forEach(aula => {
+                if (aula.codigoAula !== selectedAlumnoTraslado.aulaActual) {
+                    let indicador = '';
+                    if (aula.estado === 'En Curso') indicador = '⚠️ (En Curso)';
+                    if (aula.estado === 'En Cobranza') indicador = '⏳ (En Cobranza)';
+                    aulaDestinoSelect.innerHTML += `<option value="${aula.codigoAula}" data-ciclo="${aula.ciclo}" data-estado="${aula.estado}">${aula.codigoAula} (Ciclo ${aula.ciclo}) ${indicador}</option>`;
+                }
+            });
+        }
+
+        // Función para traducir tipos de traslado
+        function traducirTipoTraslado(tipo) {
+            const traducciones = {
+                'cobro': 'Traslado por Cobro',
+                'academico_inmediato': 'Traslado Académico',
+                'academico_programado': 'Traslado Académico Programado'
+            };
+            return traducciones[tipo] || tipo;
+        }
+
+
+        document.getElementById('form-traslado').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Procesando...';
+
+            try {
+                if (!selectedAlumnoTraslado) throw new Error("Seleccione un alumno.");
+                
+                const nuevaAulaCodigo = form.aulaDestino.value;
+                const motivo = form.motivo.value;
+                const tipoTraslado = document.getElementById('tipo-traslado-select').value;
+                const selectedOption = document.getElementById('aula-destino-select').selectedOptions[0];
+                const cicloDestinoCalculado = parseInt(selectedOption.dataset.ciclo);
+                const estadoDestino = selectedOption.dataset.estado;
+
+                if (!nuevaAulaCodigo || !motivo) throw new Error("Complete el aula de destino y el motivo.");
+                
+                let confirmed = true;
+                if (estadoDestino === 'En Curso' && tipoTraslado === 'academico_inmediato') {
+                    confirmed = await customConfirm(`¡Atención! El aula seleccionada ya está en progreso. ¿Continuar?`);
+                }
+                if (!confirmed) { submitBtn.disabled = false; submitBtn.textContent = 'Confirmar Traslado'; return; }
+
+                const finalConfirmation = await customConfirm(`¿Confirmas el traslado de ${selectedAlumnoTraslado.nombreCompleto} al aula ${nuevaAulaCodigo}?`);
+                if (!finalConfirmation) { submitBtn.disabled = false; submitBtn.textContent = 'Confirmar Traslado'; return; }
+                
+                const paymentDetails = getPaymentDetailsFromForm(form);
+                const finalNote = (tipoTraslado === 'cobro' || tipoTraslado === 'academico_programado') ? await getFinalNoteForStudent(selectedAlumnoTraslado.id, selectedAlumnoTraslado.aulaActual) : null;
+                
+                const tipoAccionTraducido = traducirTipoTraslado(tipoTraslado);
+
+                await runTransaction(db, async (transaction) => {
+                    // ================== 1. FASE DE LECTURA (READS) ==================
+                    const alumnoRef = doc(db, 'alumnos', selectedAlumnoTraslado.id);
+                    const alumnoDoc = await transaction.get(alumnoRef);
+                    if (!alumnoDoc.exists()) throw new Error("No se encontró al alumno.");
+                    const alumnoData = alumnoDoc.data();
+                    
+                    const aulaOrigen = dataCache.aulas.find(a => a.codigoAula === alumnoData.aulaActual);
+                    if (!aulaOrigen) throw new Error("El aula de origen del alumno es inválida.");
+                    const aulaOrigenRef = doc(db, 'aulas', aulaOrigen.id);
+                    const aulaOrigenDoc = await transaction.get(aulaOrigenRef);
+                    
+                    let aulaNuevaRef = null;
+                    let aulaNuevaDoc = null;
+                    if (tipoTraslado === 'academico_inmediato') {
+                        const aulaNueva = dataCache.aulas.find(a => a.codigoAula === nuevaAulaCodigo);
+                        if (!aulaNueva) throw new Error("El aula de destino no fue encontrada.");
+                        aulaNuevaRef = doc(db, 'aulas', aulaNueva.id);
+                        aulaNuevaDoc = await transaction.get(aulaNuevaRef);
+                    }
+
+                    // ================== 2. FASE DE LÓGICA (LOGIC) ==================
+                    let cicloDestinoFinal = cicloDestinoCalculado;
+                    
+                    if (tipoTraslado === 'cobro') {
+                        const intention = document.querySelector('input[name="trasladoIntention"]:checked').value;
+                        cicloDestinoFinal = intention === 'avanza' ? alumnoData.cicloInscrito + 1 : alumnoData.cicloInscrito;
+                    } else if (tipoTraslado === 'academico_programado') {
+                        cicloDestinoFinal = alumnoData.cicloInscrito;
+                    }
+
+                    const detallesAdicionales = { 
+                        ...paymentDetails, 
+                        aulaDestino: nuevaAulaCodigo, 
+                        cicloDestino: cicloDestinoFinal, 
+                        aulaOrigen: alumnoData.aulaActual, 
+                        cicloOrigen: alumnoData.cicloInscrito
+                    };
+                    if (finalNote !== null) detallesAdicionales.notaFinal = finalNote;
+
+                    // ================== 3. FASE DE ESCRITURA (WRITES) =================
+                    const desc = `Traslado desde ${alumnoData.aulaActual} a ${nuevaAulaCodigo}.`;
+                    await logStudentHistory(transaction, selectedAlumnoTraslado.id, alumnoData.nombreCompleto, tipoAccionTraducido, desc, motivo, detallesAdicionales);
+
+                    if (tipoTraslado === 'academico_inmediato') {
+                        if (aulaOrigenDoc.exists()) transaction.update(aulaOrigenRef, { cantidadAlumnos: (aulaOrigenDoc.data().cantidadAlumnos || 1) - 1 });
+                        if (aulaNuevaDoc.exists()) transaction.update(aulaNuevaRef, { cantidadAlumnos: (aulaNuevaDoc.data().cantidadAlumnos || 0) + 1 });
+                        transaction.update(alumnoRef, { aulaActual: nuevaAulaCodigo, cicloInscrito: cicloDestinoFinal });
+                    } else { 
+                        const trasladoPendienteRef = doc(collection(db, 'trasladosPendientes'));
+                        const aulaDestinoData = dataCache.aulas.find(a => a.codigoAula === nuevaAulaCodigo);
+                        
+                        transaction.set(trasladoPendienteRef, {
+                            alumnoId: selectedAlumnoTraslado.id,
+                            nombreAlumno: alumnoData.nombreCompleto,
+                            aulaOrigen: alumnoData.aulaActual,
+                            cicloOrigen: alumnoData.cicloInscrito,
+                            aulaDestino: nuevaAulaCodigo,
+                            cicloDestino: cicloDestinoFinal,
+                            fechaFinAulaDestino: aulaDestinoData ? aulaDestinoData.fechaFin : null,
+                            paymentDetails: paymentDetails,
+                            fechaCreacion: Timestamp.now(),
+                            estado: 'Pendiente',
+                            tipo: tipoTraslado
+                        });
+
+                        const nuevoEstadoAula = tipoTraslado === 'cobro' ? "Sin aula (Traslado Pendiente)" : "Sin aula (Traslado Programado)";
+                        transaction.update(alumnoRef, { aulaActual: nuevoEstadoAula });
+                        
+                        if(aulaOrigenDoc.exists()) {
+                            transaction.update(aulaOrigenRef, { cantidadAlumnos: Math.max(0, (aulaOrigenDoc.data().cantidadAlumnos || 1) - 1) });
+                        }
+                    }
+                });
+                
+                await logAction("Traslado", `Se procesó un ${tipoAccionTraducido} para ${selectedAlumnoTraslado.nombreCompleto} a ${nuevaAulaCodigo}.`);
+                showNotification('¡Operación de traslado registrada exitosamente!', 'success');
+                showSelectorScreen();
+
+            } catch (error) {
+                console.error("Error en transacción de traslado: ", error);
+                showNotification(`Ocurrió un error: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirmar Traslado';
+            }
+        });
+        // --- FIN DE LA CORRECCIÓN ---
+
+
+        function setupStatusChange(action) {
+            const formId = `form-${action}`;
+            let selectedAlumno = null;
+            setupSearch(`search-alumno-${action}`, `results-${action}`, `${action}-details`, (alumno) => {
+                selectedAlumno = alumno;
+                document.getElementById(`alumno-name-${action}`).textContent = alumno.nombreCompleto;
+                document.getElementById(`${action}-details`).classList.remove('hidden');
+            }, ['Activo']);
+            document.getElementById(formId).addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const submitBtn = form.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Procesando...';
+
+                try {
+                    if (!selectedAlumno) throw new Error("Selecciona un alumno.");
+                    const motivo = e.target.querySelector('textarea[name="motivo"]').value;
+                    if (!motivo) throw new Error("El motivo es obligatorio.");
+                    
+                    const nuevoEstado = action === 'pausa' ? 'Pausado' : 'Retirado';
+                    const confirmed = await customConfirm(`¿Confirmas la acción "${nuevoEstado}" para ${selectedAlumno.nombreCompleto}?`);
+                    if (!confirmed) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = `Confirmar ${action.charAt(0).toUpperCase() + action.slice(1)}`;
+                        return;
+                    }
+
+                    const finalNote = await getFinalNoteForStudent(selectedAlumno.id, selectedAlumno.aulaActual);
+                    
+                    await runTransaction(db, async (transaction) => {
+                        const alumnoRef = doc(db, 'alumnos', selectedAlumno.id);
+                        const alumnoDoc = await transaction.get(alumnoRef);
+                        if (!alumnoDoc.exists()) throw new Error("No se encontró al alumno.");
+                        const alumnoData = alumnoDoc.data();
+
+                        const aula = dataCache.aulas.find(a => a.codigoAula === alumnoData.aulaActual);
+                        if (aula) {
+                            const aulaRef = doc(db, "aulas", aula.id);
+                            const aulaDoc = await transaction.get(aulaRef);
+                            if(aulaDoc.exists()){
+                                const currentCount = aulaDoc.data().cantidadAlumnos || 0;
+                                transaction.update(aulaRef, { cantidadAlumnos: Math.max(0, currentCount - 1) });
+                            }
+                        }
+                        
+                        transaction.update(alumnoRef, { estado: nuevoEstado, aulaActual: 'Sin aula (Fin de ciclo)' });
+                        
+                        const desc = `El estado del alumno cambió a '${nuevoEstado}' desde el aula ${alumnoData.aulaActual}.`;
+                        
+                        // ================== INICIO DE LA CORRECCIÓN (Versión Anterior) ==================
+                        // Un "Retiro" o "Pausa" es una acción de SALIDA.
+                        // Solo debe registrar aulaOrigen y cicloOrigen para evitar ambigüedad.
+                        const detalles = { 
+                            notaFinal: finalNote, 
+                            aulaOrigen: alumnoData.aulaActual, 
+                            cicloOrigen: alumnoData.cicloInscrito 
+                        };
+                        // =================== FIN DE LA CORRECCIÓN ====================
+                        
+                        await logStudentHistory(transaction, selectedAlumno.id, selectedAlumno.nombreCompleto, nuevoEstado, desc, motivo, detalles);
+                    });
+
+                    await logAction(nuevoEstado, `Se cambió el estado del alumno ${selectedAlumno.nombreCompleto} a ${nuevoEstado}.`);
+                    showNotification(`¡Alumno ${nuevoEstado.toLowerCase()} exitosamente!`, 'success');
+                    showSelectorScreen();
+
+                } catch (error) {
+                    console.error(`Error al cambiar estado a ${nuevoEstado}: `, error);
+                    showNotification("Error al procesar la acción: " + error.message, 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = `Confirmar ${action.charAt(0).toUpperCase() + action.slice(1)}`;
+                }
+            });
+        }
+        setupStatusChange('pausa');
+        setupStatusChange('retiro');
+        
+        let selectedAlumnoReincorporar = null;
+        setupSearch('search-alumno-reincorporar', 'results-reincorporar', 'reincorporar-details', (alumno) => {
+            selectedAlumnoReincorporar = alumno;
+            document.getElementById('alumno-name-reincorporar').textContent = alumno.nombreCompleto;
+            const detailsDiv = document.getElementById('reincorporar-details');
+            const aulaSelect = document.getElementById('aula-reincorporar-select');
+            detailsDiv.classList.remove('hidden');
+            aulaSelect.innerHTML = '<option>Buscando aulas...</option>';
+            
+            const aulas = dataCache.aulas.filter(aula => ["Programada", "En Curso"].includes(aula.estado))
+                            .sort((a, b) => a.ciclo - b.ciclo || a.codigoAula.localeCompare(b.codigoAula));
+
+            aulaSelect.innerHTML = '<option value="">Seleccione aula para reincorporar</option>';
+            aulas.forEach(aula => {
+                aulaSelect.innerHTML += `<option value="${aula.codigoAula}" data-curso="${aula.tipoAula}" data-ciclo="${aula.ciclo}">${aula.codigoAula} (Ciclo ${aula.ciclo} - ${aula.nombreDocente})</option>`;
+            });
+        }, ['Pausado', 'Retirado']);
+        document.getElementById('form-reincorporar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Procesando...';
+
+            try {
+                if (!selectedAlumnoReincorporar) throw new Error("Seleccione un alumno.");
+                const nuevaAulaCodigo = form.aulaReincorporar.value;
+                const motivo = form.motivo.value;
+                const paymentDetails = getPaymentDetailsFromForm(form);
+                const selectedOption = form.aulaReincorporar.options[form.aulaReincorporar.selectedIndex];
+                const cicloInscrito = parseInt(selectedOption.dataset.ciclo);
+                const cursoInscrito = selectedOption.dataset.curso;
+                if (!nuevaAulaCodigo || !paymentDetails.montoPagado || !motivo) throw new Error("Complete todos los campos.");
+                
+                const confirmed = await customConfirm(`¿Reincorporar a ${selectedAlumnoReincorporar.nombreCompleto} al aula ${nuevaAulaCodigo}?`);
+                if (!confirmed) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Confirmar Reincorporación';
+                    return;
+                }
+
+                await runTransaction(db, async (transaction) => {
+                    const alumnoRef = doc(db, 'alumnos', selectedAlumnoReincorporar.id);
+                    const aulaRef = doc(db, "aulas", dataCache.aulas.find(a => a.codigoAula === nuevaAulaCodigo).id);
+                    const aulaData = await transaction.get(aulaRef);
+                    transaction.update(aulaRef, { cantidadAlumnos: (aulaData.data().cantidadAlumnos || 0) + 1 });
+                    transaction.update(alumnoRef, { estado: 'Activo', aulaActual: nuevaAulaCodigo, cursoInscrito: cursoInscrito, cicloInscrito: cicloInscrito });
+                    const desc = `Reincorporado y asignado al aula ${nuevaAulaCodigo}.`;
+                    await logStudentHistory(transaction, selectedAlumnoReincorporar.id, selectedAlumnoReincorporar.nombreCompleto, "Reincorporación", desc, motivo, { ...paymentDetails, aula: nuevaAulaCodigo, curso: cursoInscrito, ciclo: cicloInscrito });
+                });
+                await logAction("Reincorporación", `Se reincorporó al alumno ${selectedAlumnoReincorporar.nombreCompleto} al aula ${nuevaAulaCodigo}.`);
+                showNotification('¡Alumno reincorporado exitosamente!', 'success');
+                showSelectorScreen();
+            } catch (error) {
+                console.error("Error en reincorporación: ", error);
+                showNotification(`Ocurrió un error: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirmar Reincorporación';
+            }
+        });
+
+        let selectedAlumnoEgresar = null;
+        setupSearch('search-alumno-egresar', 'results-egresar', 'egresar-details', (alumno) => {
+            selectedAlumnoEgresar = alumno;
+            document.getElementById('alumno-name-egresar').textContent = alumno.nombreCompleto;
+            document.getElementById('curso-actual-egresar').textContent = alumno.cursoInscrito || 'N/A';
+            document.getElementById('ciclo-actual-egresar').textContent = alumno.cicloInscrito || 'N/A';
+            document.getElementById('egresar-details').classList.remove('hidden');
+        }, ['Activo']);
+        document.getElementById('form-egresar').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Procesando...';
+
+            try {
+                if (!selectedAlumnoEgresar) throw new Error("Selecciona un alumno.");
+                const motivo = e.target.querySelector('textarea[name="motivo"]').value;
+                if (!motivo) throw new Error("El motivo es obligatorio.");
+                
+                const finalNote = await getFinalNoteForStudent(selectedAlumnoEgresar.id, selectedAlumnoEgresar.aulaActual);
+                
+                const confirmed = await customConfirm(`¿Confirmas el EGRESO de ${selectedAlumnoEgresar.nombreCompleto}? Su nota final registrada es: ${finalNote !== null ? finalNote : 'N/A'}. Esta acción es definitiva.`);
+                if (!confirmed) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Confirmar Egreso';
+                    return;
+                }
+                
+                await runTransaction(db, async (transaction) => {
+                    const alumnoRef = doc(db, 'alumnos', selectedAlumnoEgresar.id);
+                    transaction.update(alumnoRef, { estado: 'Egresado', aulaActual: `Egresado de ${selectedAlumnoEgresar.cursoInscrito}` });
+                    const desc = `El alumno ha completado exitosamente el curso ${selectedAlumnoEgresar.cursoInscrito}.`;
+                    const detalles = { aula: selectedAlumnoEgresar.aulaActual, ciclo: selectedAlumnoEgresar.cicloInscrito, notaFinal: finalNote };
+                    await logStudentHistory(transaction, selectedAlumnoEgresar.id, selectedAlumnoEgresar.nombreCompleto, 'Egreso', desc, motivo, detalles);
+                });
+
+                await logAction("Egreso", `Se marcó como egresado al alumno ${selectedAlumnoEgresar.nombreCompleto}.`);
+                showNotification('¡Alumno egresado exitosamente!', 'success');
+                showSelectorScreen();
+            } catch (error) {
+                console.error(`Error al egresar alumno: `, error);
+                showNotification("Error al procesar el egreso: " + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirmar Egreso';
+            }
+        });
+
+        let selectedAlumnoReembolso = null;
+        setupSearch('search-alumno-reembolso', 'results-reembolso', 'reembolso-details', async (alumno) => {
+            selectedAlumnoReembolso = alumno;
+            document.getElementById('alumno-name-reembolso').textContent = alumno.nombreCompleto;
+            const detailsDiv = document.getElementById('reembolso-details');
+            const lastPaymentInfo = document.getElementById('last-payment-info');
+            const montoReembolsadoInput = detailsDiv.querySelector('[name="montoReembolsado"]');
+            detailsDiv.classList.remove('hidden');
+            lastPaymentInfo.innerHTML = 'Buscando último pago...';
+            montoReembolsadoInput.value = '';
+
+            const q = query(collection(db, "historialAlumnos"), where("alumnoId", "==", alumno.id), where("tipoAccion", "in", ["Inscripción", "Renovación", "Traslado por Cobro", "Reincorporación"]), orderBy("fecha", "desc"), limit(1));
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) {
+                lastPaymentInfo.innerHTML = '<p class="text-red-600">No se encontró un pago previo para este alumno.</p>';
+            } else {
+                const lastPayment = snapshot.docs[0].data();
+                const monto = lastPayment.detalles.montoPagado;
+                const fecha = lastPayment.fecha.toDate().toLocaleDateString('es-ES');
+                lastPaymentInfo.innerHTML = `<p><strong>Último Pago Registrado:</strong></p><p><strong>Monto:</strong> S/ ${monto.toFixed(2)}</p><p><strong>Fecha:</strong> ${fecha}</p><p><strong>Acción:</strong> ${lastPayment.tipoAccion}</p>`;
+                montoReembolsadoInput.value = monto.toFixed(2);
+            }
+        }, ['Activo']);
+
+        document.getElementById('form-reembolso').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Procesando...';
+            
+            try {
+                if (!selectedAlumnoReembolso) throw new Error("Por favor, selecciona un alumno.");
+            
+                const montoReembolsado = parseFloat(form.montoReembolsado.value);
+                const motivo = form.motivo.value;
+                const medioDeReembolso = form.medioDeReembolso.value;
+                const numeroOperacionReembolso = form.numeroOperacionReembolso.value;
+
+                if (!motivo || isNaN(montoReembolsado) || montoReembolsado <= 0 || !medioDeReembolso || !numeroOperacionReembolso) {
+                    throw new Error("Por favor, completa todos los campos del reembolso.");
+                }
+
+                const confirmed = await customConfirm(`¿Confirmas el retiro y reembolso de S/ ${montoReembolsado.toFixed(2)} para ${selectedAlumnoReembolso.nombreCompleto}? Esta acción es irreversible.`);
+                if (!confirmed) {
+                     submitBtn.disabled = false;
+                    submitBtn.textContent = 'Confirmar Retiro y Reembolso';
+                    return;
+                }
+                
+                await runTransaction(db, async (transaction) => {
+                    const alumnoRef = doc(db, 'alumnos', selectedAlumnoReembolso.id);
+                    const aula = dataCache.aulas.find(a => a.codigoAula === selectedAlumnoReembolso.aulaActual);
+                    if (aula) {
+                        const aulaRef = doc(db, 'aulas', aula.id);
+                        const aulaDoc = await transaction.get(aulaRef);
+                        if(aulaDoc.exists()){
+                            const newCount = (aulaDoc.data().cantidadAlumnos || 1) - 1;
+                            transaction.update(aulaRef, { cantidadAlumnos: Math.max(0, newCount) });
+                        }
+                    }
+
+                    transaction.update(alumnoRef, { estado: 'Retirado' });
+
+                    const desc = `Reembolso de S/ ${montoReembolsado.toFixed(2)} procesado.`;
+                    const refundDetails = { montoPagado: -montoReembolsado, medioDePago: medioDeReembolso, numeroOperacion: numeroOperacionReembolso, };
+                    await logStudentHistory(transaction, selectedAlumnoReembolso.id, selectedAlumnoReembolso.nombreCompleto, "Reembolso", desc, motivo, refundDetails);
+                });
+
+                await logAction("Reembolso", `Se procesó un reembolso de S/ ${montoReembolsado.toFixed(2)} para el alumno ${selectedAlumnoReembolso.nombreCompleto}.`);
+                showNotification('¡Retiro y reembolso procesados exitosamente!', 'success');
+                showSelectorScreen();
+            } catch (error) {
+                console.error("Error en la transacción de reembolso: ", error);
+                showNotification(`Ocurrió un error: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirmar Retiro y Reembolso';
+            }
+        });
+
+        const gestionSelectorScreen = document.getElementById('gestion-selector-screen');
+        const gestionSelect = document.getElementById('gestion-select');
+        const realizarGestionBtn = document.getElementById('realizar-gestion-btn');
+        const formContainers = document.querySelectorAll('.form-container');
+
+        function showSelectorScreen() {
+            formContainers.forEach(container => container.classList.add('hidden'));
+            gestionSelectorScreen.classList.remove('hidden');
+            // Resetear todos los formularios al volver a la pantalla de selección
+            formContainers.forEach(container => {
+                const form = container.querySelector('form');
+                if (form) form.reset();
+                container.querySelectorAll('[id$="-details"]').forEach(el => el.classList.add('hidden'));
+                container.querySelectorAll('[id^="results-"]').forEach(el => el.innerHTML = '');
+            });
+        }
+
+        function showForm(gestion) {
+            gestionSelectorScreen.classList.add('hidden');
+            formContainers.forEach(container => {
+                container.classList.toggle('hidden', container.id !== `form-container-${gestion}`);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const userName = getQueryParam('userName') || 'Colaborador';
+            document.getElementById('gestion-greeting').textContent = `Hola, ${userName.split(' ')[0]}!`;
+
+            onSnapshot(collection(db, "alumnos"), (snapshot) => {
+                dataCache.alumnos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const activeSearch = document.querySelector('.form-container:not(.hidden) input[type="text"]');
+                if (activeSearch && activeSearch.value.length >= 3) {
+                    activeSearch.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+            onSnapshot(collection(db, "aulas"), (snapshot) => {
+                dataCache.aulas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            });
+
+            realizarGestionBtn.addEventListener('click', () => {
+                const selectedGestion = gestionSelect.value;
+                showForm(selectedGestion);
+            });
+
+            document.body.addEventListener('click', (e) => {
+                if (e.target.classList.contains('back-to-selector-btn')) {
+                    showSelectorScreen();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

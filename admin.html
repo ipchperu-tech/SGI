@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Administración</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold text-gray-800 mb-6">Panel de Administración</h2>
+        
+        <div id="admin-tool-selector-screen" class="card p-8 text-center">
+            <h3 id="admin-greeting" class="text-2xl font-bold text-gray-800 mb-2"></h3>
+            <p class="text-gray-600 mb-6">Selecciona la herramienta administrativa que deseas utilizar.</p>
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+                <select id="admin-tool-select" class="w-full p-3 border rounded-md">
+                    <option value="maintenance">Control de Mantenimiento</option>
+                    <option value="assignment_correction">Corrección de Asignación de Aula</option>
+                    <option value="clear_note">Limpiar Nota de Historial</option>
+                    <option value="recover_aula">Recuperar Aula Cerrada</option>
+                    <option value="revert_egreso">Revertir Egreso de Alumno</option>
+                    <option value="revert_reincorporacion">Revertir Reincorporación</option>
+                    <option value="revert_inscripcion">Revertir Inscripción</option>
+                    <option value="process_transfer">Procesar Traslado Pendiente Manualmente</option>
+                    <option value="delete_record">Borrado Específico de Registros</option>
+                </select>
+                <button id="go-to-tool-btn" class="btn-primary font-semibold py-3 px-6 rounded-md w-full sm:w-auto whitespace-nowrap">Ir a Herramienta</button>
+            </div>
+        </div>
+
+        <div id="admin-tools-container" class="hidden">
+            <!-- Botón para volver al selector -->
+            <button id="back-to-selector-btn" class="mb-6 text-sm text-gray-600 hover:text-red-700 font-semibold">
+                <i class="fas fa-arrow-left mr-2"></i>Volver a la selección de herramientas
+            </button>
+
+            <!-- Modo Mantenimiento -->
+            <div id="tool-container-maintenance" class="admin-tool-form card p-8 hidden">
+                <div class="mb-8 p-4 rounded-lg" id="maintenance-status-banner">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-lg" id="maintenance-status-title">Estado del Sistema</h4>
+                            <p class="text-sm" id="maintenance-status-text">Cargando estado actual...</p>
+                        </div>
+                        <button id="toggle-maintenance-btn" class="font-bold py-2 px-5 rounded-md transition-colors disabled:opacity-50">
+                            Cargando...
+                        </button>
+                    </div>
+                </div>
+                <!-- NUEVO: Lista de Usuarios Conectados -->
+                <div>
+                    <h4 class="font-bold text-lg mb-4">Colaboradores Conectados Ahora</h4>
+                    <div id="online-users-container" class="space-y-3">
+                        <p class="text-center text-gray-500 py-4">Cargando lista de usuarios...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Herramienta para Revertir Reincorporación -->
+            <div id="tool-container-revert_reincorporacion" class="admin-tool-form card p-8 hidden">
+                <h4 class="font-bold text-lg text-gray-800 mb-2">Revertir Última Reincorporación</h4>
+                <p class="text-sm text-gray-600 mb-4">Busca un alumno 'Activo' para encontrar y anular su último registro de reincorporación, devolviéndolo a su estado anterior (ej: 'Pausado') y ajustando contadores.</p>
+                <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <input type="text" id="search-student-revert-reinc" placeholder="Buscar alumno por nombre o DNI..." class="w-full p-2 border rounded-md">
+                    <div id="student-revert-reinc-results" class="max-h-48 overflow-y-auto"></div>
+                    
+                    <div id="revert-reinc-form" class="hidden mt-4 space-y-4">
+                        <p class="text-sm">Revertir la siguiente acción para:</p>
+                        <p class="font-bold text-lg text-orange-800" id="student-revert-reinc-name"></p>
+                        <div id="revert-reinc-details" class="p-4 border bg-white rounded-md text-sm"></div>
+                        <button type="button" id="revert-reinc-btn" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-md">Confirmar y Revertir Reincorporación</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INICIO DE LA ACTUALIZACIÓN: Contenedor para la Nueva Herramienta de Inscripción -->
+            <div id="tool-container-revert_inscripcion" class="admin-tool-form card p-8 hidden">
+                <h4 class="font-bold text-lg text-gray-800 mb-2">Revertir Última Inscripción</h4>
+                <p class="text-sm text-gray-600 mb-4">Busca un alumno 'Activo' para anular su registro de inscripción inicial, devolviéndolo a su estado 'Registrado' y ajustando contadores.</p>
+                <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <input type="text" id="search-student-revert-insc" placeholder="Buscar alumno por nombre o DNI..." class="w-full p-2 border rounded-md">
+                    <div id="student-revert-insc-results" class="max-h-48 overflow-y-auto"></div>
+                    
+                    <div id="revert-insc-form" class="hidden mt-4 space-y-4">
+                        <p class="text-sm">Revertir la siguiente acción para:</p>
+                        <p class="font-bold text-lg text-purple-800" id="student-revert-insc-name"></p>
+                        <div id="revert-insc-details" class="p-4 border bg-white rounded-md text-sm"></div>
+                        <button type="button" id="revert-insc-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-md">Confirmar y Revertir Inscripción</button>
+                    </div>
+                </div>
+            </div>
+            <!-- FIN DE LA ACTUALIZACIÓN -->
+
+            <!-- Herramienta para Limpiar Nota de Historial -->
+            <div id="tool-container-clear_note" class="admin-tool-form card p-8 hidden">
+                <h4 class="font-bold text-lg text-gray-800 mb-2">Limpiar Nota de Historial de Alumno</h4>
+                <p class="text-sm text-gray-600 mb-4">Esta herramienta permite eliminar una nota final incorrecta de un registro específico en el historial de un alumno (ej: un Traslado Académico que guardó una nota por error).</p>
+                <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <input type="text" id="search-student-history" placeholder="Buscar alumno por nombre o DNI..." class="w-full p-2 border rounded-md">
+                    <div id="student-history-results" class="max-h-48 overflow-y-auto"></div>
+                    <div id="history-records-container" class="hidden mt-4 space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- Herramienta para Recuperar Aula -->
+            <div id="tool-container-recover_aula" class="admin-tool-form card p-8 hidden">
+                <h4 class="font-bold text-lg text-gray-800 mb-2">Recuperar Aula Cerrada desde Historial</h4>
+                <p class="text-sm text-gray-600 mb-4">Esta herramienta de emergencia busca en el historial de carteras las aulas que fueron cerradas y eliminadas por error, permitiendo restaurarlas a la base de datos principal.</p>
+                <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <input type="text" id="search-aula-recover" placeholder="Buscar por código de aula en el historial..." class="w-full p-2 border rounded-md">
+                    <div id="aula-recover-results" class="max-h-48 overflow-y-auto"></div>
+                    <div id="aula-recover-form" class="hidden mt-4 space-y-4">
+                        <p class="text-sm">Restaurar la siguiente aula:</p>
+                        <p class="font-bold text-lg text-green-800" id="aula-recover-name"></p>
+                        <button type="button" id="recover-aula-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-md">Confirmar y Restaurar Aula</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Herramienta para Revertir Egreso -->
+            <div id="tool-container-revert_egreso" class="admin-tool-form card p-8 hidden">
+                <h4 class="font-bold text-lg text-gray-800 mb-2">Revertir Egreso de Alumno</h4>
+                <p class="text-sm text-gray-600 mb-4">Esta herramienta busca un alumno egresado, elimina su último registro de egreso y restaura su estado a "Activo". Úsalo para corregir egresos accidentales.</p>
+                <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <input type="text" id="search-student-revert" placeholder="Buscar alumno egresado por nombre o DNI..." class="w-full p-2 border rounded-md">
+                    <div id="student-revert-results" class="max-h-48 overflow-y-auto"></div>
+                    
+                    <div id="student-revert-form" class="hidden mt-4 space-y-4">
+                        <p class="text-sm">Revertir egreso para:</p>
+                        <p class="font-bold text-lg text-red-800" id="student-revert-name"></p>
+                        <button type="button" id="revert-egreso-btn" class="w-full danger-btn">Confirmar y Revertir Egreso</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Herramienta de Corrección de Asignación -->
+            <div id="tool-container-assignment_correction" class="admin-tool-form card p-8 hidden">
+                <h4 class="font-bold text-lg text-gray-800 mb-2">Corrección de Asignación de Aula</h4>
+                <p class="text-sm text-gray-600 mb-4">Esta herramienta mueve a un alumno de un aula a otra sin dejar registro en su historial de transacciones. Úsala solo para corregir errores de inscripción o casos especiales.</p>
+                <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <input type="text" id="search-student-correction" placeholder="Buscar alumno por nombre o DNI (cualquier estado)..." class="w-full p-2 border rounded-md">
+                    <div id="student-correction-results" class="max-h-48 overflow-y-auto"></div>
+                    
+                    <div id="student-correction-form" class="hidden mt-4 space-y-4">
+                        <p class="text-sm">Moviendo al alumno:</p>
+                        <p class="font-bold text-lg text-blue-800" id="student-correction-name"></p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">Desde Aula:</label>
+                                <p id="current-aula-display" class="p-2 bg-gray-200 rounded-md text-sm"></p>
+                            </div>
+                            <div>
+                                <label for="new-aula-select" class="block text-sm font-medium">Hacia Aula:</label>
+                                <select id="new-aula-select" class="w-full p-2 border rounded-md"></select>
+                            </div>
+                        </div>
+                        <button type="button" id="correct-assignment-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-md">Confirmar Corrección de Asignación</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Herramienta para Procesar Traslado Pendiente Manualmente -->
+            <div id="tool-container-process_transfer" class="admin-tool-form card p-8 hidden">
+                <h4 class="font-bold text-lg text-gray-800 mb-2">Procesar Traslado Pendiente Manualmente</h4>
+                <p class="text-sm text-gray-600 mb-4">Esta herramienta fuerza la ejecución de un "Traslado por Cobro" que no se procesó automáticamente. Mueve al alumno, actualiza contadores y completa el registro pendiente.</p>
+                <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <input type="text" id="search-pending-transfer" placeholder="Buscar por nombre del alumno con traslado pendiente..." class="w-full p-2 border rounded-md">
+                    <div id="pending-transfer-results" class="max-h-48 overflow-y-auto"></div>
+                    
+                    <div id="pending-transfer-form" class="hidden mt-4 space-y-4">
+                        <p class="text-sm">Procesar el siguiente traslado:</p>
+                        <div class="p-4 border bg-white rounded-md">
+                            <p class="font-bold text-lg text-indigo-800" id="pending-transfer-name"></p>
+                            <p class="text-sm">Desde: <strong id="pending-transfer-origin"></strong></p>
+                            <p class="text-sm">Hacia: <strong id="pending-transfer-destination"></strong></p>
+                        </div>
+                        <button type="button" id="process-transfer-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-md">Confirmar y Procesar Traslado</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Borrado Específico de Registros -->
+            <div id="tool-container-delete_record" class="admin-tool-form card p-8 hidden">
+                <h4 class="font-bold text-lg text-gray-800 mb-2">Borrado Específico de Registros</h4>
+                <p class="text-sm text-gray-600 mb-4">Selecciona el tipo de registro que deseas eliminar, búscalo y procede con la eliminación. Esta acción es irreversible.</p>
+                <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
+                    <select id="delete-type-select" class="w-full p-2 border rounded-md">
+                        <option value="alumnos">Alumno</option>
+                        <option value="docentes">Docente</option>
+                        <option value="aulas">Aula</option>
+                        <option value="usuarios">Colaborador</option>
+                    </select>
+                    <input type="text" id="search-specific-input" placeholder="Buscar registro..." class="w-full p-2 border rounded-md">
+                    <div id="search-specific-results" class="max-h-48 overflow-y-auto"></div>
+                    
+                    <div id="record-to-delete-container" class="hidden mt-4 p-4 border-l-4 border-red-500 bg-red-50">
+                        <p class="text-sm">Registro seleccionado para eliminación:</p>
+                        <p class="font-bold text-lg text-red-800" id="record-name-display"></p>
+                        <button type="button" id="delete-specific-btn" class="w-full mt-4 danger-btn">Eliminar Permanentemente</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, writeBatch, doc, query, where, addDoc, Timestamp, updateDoc, deleteDoc, runTransaction, orderBy, limit, setDoc, onSnapshot, getDoc, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+            authDomain: "bdv3-ipch.firebaseapp.com",
+            projectId: "bdv3-ipch",
+            storageBucket: "bdv3-ipch.appspot.com",
+            messagingSenderId: "993842726107",
+            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        let dataCache = {
+            alumnos: [],
+            aulas: [],
+            trasladosPendientes: [],
+            historialCarteras: [],
+            usuarios: [],
+            docentes: [],
+        };
+
+        function showNotification(message, type = 'success', duration = 5000) {
+            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+        }
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const confirmId = Math.random().toString(36).substring(2, 15);
+                const listener = (event) => {
+                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
+                        window.removeEventListener('message', listener);
+                        resolve(event.data.result);
+                    }
+                };
+                window.addEventListener('message', listener);
+                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
+            });
+        }
+        async function logAction(action, description) {
+            const currentUserEmail = new URLSearchParams(window.location.search).get('user') || 'sistema@sgi.com';
+            try {
+                await addDoc(collection(db, 'historialCambios'), {
+                    fecha: Timestamp.now(),
+                    usuario: currentUserEmail,
+                    accion: action,
+                    descripcion: description
+                });
+            } catch (error) {
+                console.error("Error logging action:", error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUserEmail = new URLSearchParams(window.location.search).get('user') || 'sistema@sgi.com';
+            const userName = new URLSearchParams(window.location.search).get('userName') || 'Admin';
+            document.getElementById('admin-greeting').textContent = `Hola, ${userName.split(' ')[0]}!`;
+            
+            // --- Suscripciones a datos en tiempo real ---
+            const collectionsToCache = ['alumnos', 'aulas', 'trasladosPendientes', 'historialCarteras', 'usuarios', 'docentes'];
+            collectionsToCache.forEach(name => {
+                onSnapshot(collection(db, name), snapshot => {
+                    dataCache[name] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                });
+            });
+
+            // --- Lógica del Selector de Herramientas ---
+            const selectorScreen = document.getElementById('admin-tool-selector-screen');
+            const toolsContainer = document.getElementById('admin-tools-container');
+            const toolSelect = document.getElementById('admin-tool-select');
+            const goToToolBtn = document.getElementById('go-to-tool-btn');
+            const backToSelectorBtn = document.getElementById('back-to-selector-btn');
+
+            function showTool(toolName) {
+                selectorScreen.classList.add('hidden');
+                toolsContainer.classList.remove('hidden');
+                document.querySelectorAll('.admin-tool-form').forEach(form => {
+                    form.classList.toggle('hidden', form.id !== `tool-container-${toolName}`);
+                });
+            }
+
+            function showSelector() {
+                toolsContainer.classList.add('hidden');
+                selectorScreen.classList.remove('hidden');
+            }
+
+            goToToolBtn.addEventListener('click', () => {
+                showTool(toolSelect.value);
+            });
+            backToSelectorBtn.addEventListener('click', showSelector);
+
+
+            // --- Lógica de Modo Mantenimiento ---
+            const statusBanner = document.getElementById('maintenance-status-banner');
+            const statusTitle = document.getElementById('maintenance-status-title');
+            const statusText = document.getElementById('maintenance-status-text');
+            const toggleBtn = document.getElementById('toggle-maintenance-btn');
+            const systemStatusRef = doc(db, "systemInfo", "status");
+            const onlineUsersContainer = document.getElementById('online-users-container');
+
+            onSnapshot(systemStatusRef, (docSnap) => {
+                toggleBtn.disabled = false;
+                if (docSnap.exists() && docSnap.data().maintenanceMode) {
+                    const data = docSnap.data();
+                    statusBanner.className = 'mb-8 p-4 rounded-lg bg-red-100 border border-red-200';
+                    statusTitle.className = 'font-bold text-lg text-red-800';
+                    statusTitle.textContent = '¡Modo Mantenimiento ACTIVO!';
+                    statusText.textContent = `Activado por: ${data.allowedUser || 'N/A'}. Solo este usuario tiene acceso.`;
+                    toggleBtn.textContent = 'Desactivar Modo';
+                    toggleBtn.className = 'font-bold py-2 px-5 rounded-md transition-colors bg-red-600 hover:bg-red-700 text-white';
+                } else {
+                    statusBanner.className = 'mb-8 p-4 rounded-lg bg-green-100 border border-green-200';
+                    statusTitle.className = 'font-bold text-lg text-green-800';
+                    statusTitle.textContent = 'Sistema Operativo';
+                    statusText.textContent = 'Todos los colaboradores tienen acceso al sistema.';
+                    toggleBtn.textContent = 'Activar Mantenimiento';
+                    toggleBtn.className = 'font-bold py-2 px-5 rounded-md transition-colors bg-yellow-500 hover:bg-yellow-600 text-white';
+                }
+            });
+            
+            // --- NUEVO: Listener para presencia de usuarios ---
+            const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+            const presenceQuery = query(collection(db, 'user_presence'), where('last_seen', '>', Timestamp.fromDate(twoMinutesAgo)));
+
+            onSnapshot(presenceQuery, (snapshot) => {
+                onlineUsersContainer.innerHTML = '';
+                const onlineUsers = snapshot.docs
+                    .map(doc => doc.data())
+                    .filter(user => user.status === 'online');
+
+                if (onlineUsers.length === 0) {
+                    onlineUsersContainer.innerHTML = '<p class="text-center text-gray-500 py-4">Nadie está conectado en este momento.</p>';
+                    return;
+                }
+
+                onlineUsers.forEach(user => {
+                    const userDiv = document.createElement('div');
+                    userDiv.className = 'flex items-center gap-3 p-2 bg-gray-50 rounded-md';
+                    userDiv.innerHTML = `
+                        <i class="fas fa-circle text-green-500 text-xs"></i>
+                        <div>
+                            <p class="font-semibold text-sm">${user.userName}</p>
+                            <p class="text-xs text-gray-500">${user.userRole}</p>
+                        </div>
+                    `;
+                    onlineUsersContainer.appendChild(userDiv);
+                });
+            });
+
+
+            toggleBtn.addEventListener('click', async () => {
+                const docSnap = await getDoc(systemStatusRef);
+                const currentlyActive = docSnap.exists() && docSnap.data().maintenanceMode;
+
+                if (currentlyActive) {
+                    const confirmed = await customConfirm("¿Estás seguro de que quieres desactivar el modo mantenimiento y permitir el acceso a todos los colaboradores?");
+                    if (confirmed) {
+                        await setDoc(systemStatusRef, { maintenanceMode: false, allowedUser: null });
+                        showNotification("Modo Mantenimiento DESACTIVADO.", "success");
+                    }
+                } else {
+                    const confirmed = await customConfirm(`¿Activar modo mantenimiento? SOLO TÚ (${currentUserEmail}) podrás acceder. El resto de usuarios serán bloqueados.`);
+                    if (confirmed) {
+                        await setDoc(systemStatusRef, { maintenanceMode: true, allowedUser: currentUserEmail });
+                        showNotification("Modo Mantenimiento ACTIVADO.", "info");
+                    }
+                }
+            });
+            
+            // --- Lógica para Revertir Reincorporación ---
+            const searchRevertReincInput = document.getElementById('search-student-revert-reinc');
+            const revertReincResults = document.getElementById('student-revert-reinc-results');
+            const revertReincForm = document.getElementById('revert-reinc-form');
+            let searchRevertReincTimeout;
+            let selectedStudentForRevertReinc = null;
+            let historyRecordToRevert = null;
+
+            searchRevertReincInput.addEventListener('input', () => {
+                clearTimeout(searchRevertReincTimeout);
+                const searchTerm = searchRevertReincInput.value.trim().toLowerCase();
+                revertReincForm.classList.add('hidden');
+                
+                if (searchTerm.length < 3) {
+                    revertReincResults.innerHTML = '';
+                    return;
+                }
+
+                searchRevertReincTimeout = setTimeout(() => {
+                    const results = dataCache.alumnos.filter(s => s.estado === 'Activo' && (s.nombreCompleto.toLowerCase().includes(searchTerm) || (s.documentoIdentidad && s.documentoIdentidad.includes(searchTerm))));
+                    
+                    revertReincResults.innerHTML = '';
+                    if (results.length > 0) {
+                        results.forEach(student => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 border-b cursor-pointer hover:bg-gray-100';
+                            div.textContent = `${student.nombreCompleto} (${student.documentoIdentidad || 'Sin DNI'})`;
+                            div.addEventListener('click', () => selectStudentForRevertReinc(student));
+                            revertReincResults.appendChild(div);
+                        });
+                    } else {
+                        revertReincResults.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron alumnos activos.</p>';
+                    }
+                }, 500);
+            });
+
+            async function selectStudentForRevertReinc(student) {
+                selectedStudentForRevertReinc = student;
+                revertReincResults.innerHTML = '';
+                searchRevertReincInput.value = '';
+                document.getElementById('student-revert-reinc-name').textContent = student.nombreCompleto;
+                
+                const detailsContainer = document.getElementById('revert-reinc-details');
+                detailsContainer.innerHTML = '<div class="loader inline-block"></div> Buscando registro...';
+                revertReincForm.classList.remove('hidden');
+
+                const q = query(
+                    collection(db, "historialAlumnos"),
+                    where("alumnoId", "==", student.id),
+                    where("tipoAccion", "==", "Reincorporación"),
+                    orderBy("fecha", "desc"),
+                    limit(1)
+                );
+                
+                const historySnap = await getDocs(q);
+                if (historySnap.empty) {
+                    detailsContainer.innerHTML = '<p class="text-red-600 font-semibold">Error: No se encontró un registro de "Reincorporación" para este alumno.</p>';
+                    document.getElementById('revert-reinc-btn').disabled = true;
+                    historyRecordToRevert = null;
+                } else {
+                    historyRecordToRevert = { id: historySnap.docs[0].id, ...historySnap.docs[0].data() };
+                    const details = historyRecordToRevert.detalles || {};
+                    const fecha = historyRecordToRevert.fecha.toDate().toLocaleString('es-PE');
+                    detailsContainer.innerHTML = `
+                        <p><strong>Acción:</strong> ${historyRecordToRevert.tipoAccion}</p>
+                        <p><strong>Fecha:</strong> ${fecha}</p>
+                        <p><strong>Aula de Reincorporación:</strong> ${details.aula || 'N/A'}</p>
+                        <p><strong>Motivo Original:</strong> ${historyRecordToRevert.motivo || 'N/A'}</p>
+                    `;
+                    document.getElementById('revert-reinc-btn').disabled = false;
+                }
+            }
+
+            document.getElementById('revert-reinc-btn').addEventListener('click', async () => {
+                if (!selectedStudentForRevertReinc || !historyRecordToRevert) return;
+
+                const confirmed = await customConfirm(`¿Estás seguro de revertir la reincorporación de ${selectedStudentForRevertReinc.nombreCompleto}? Su estado volverá a 'Pausado' y se anulará esta acción.`);
+                if (!confirmed) return;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const alumnoRef = doc(db, "alumnos", selectedStudentForRevertReinc.id);
+                        const historyRef = doc(db, "historialAlumnos", historyRecordToRevert.id);
+                        
+                        const aulaIncorrecta = dataCache.aulas.find(a => a.codigoAula === selectedStudentForRevertReinc.aulaActual);
+                        
+                        if (aulaIncorrecta) {
+                            const aulaRef = doc(db, "aulas", aulaIncorrecta.id);
+                            const aulaDoc = await transaction.get(aulaRef);
+                            if (aulaDoc.exists()) {
+                                const newCount = Math.max(0, (aulaDoc.data().cantidadAlumnos || 1) - 1);
+                                transaction.update(aulaRef, { cantidadAlumnos: newCount });
+                            }
+                        }
+
+                        transaction.update(alumnoRef, { 
+                            estado: 'Pausado',
+                            aulaActual: null
+                        });
+
+                        transaction.delete(historyRef);
+                    });
+
+                    await logAction("Reversión de Reincorporación", `Se revirtió la reincorporación del alumno ${selectedStudentForRevertReinc.nombreCompleto} (ID: ${selectedStudentForRevertReinc.id}).`);
+                    showNotification("Reincorporación revertida exitosamente.", "success");
+                    revertReincForm.classList.add('hidden');
+                    showSelector();
+
+                } catch (error) {
+                    showNotification(`Error al revertir: ${error.message}`, "error");
+                    console.error("Error en la transacción de reversión:", error);
+                }
+            });
+
+            // --- Lógica para Revertir Inscripción ---
+            const searchRevertInscInput = document.getElementById('search-student-revert-insc');
+            const revertInscResults = document.getElementById('student-revert-insc-results');
+            const revertInscForm = document.getElementById('revert-insc-form');
+            let searchRevertInscTimeout;
+            let selectedStudentForRevertInsc = null;
+            let historyRecordToRevertInsc = null;
+
+            searchRevertInscInput.addEventListener('input', () => {
+                clearTimeout(searchRevertInscTimeout);
+                const searchTerm = searchRevertInscInput.value.trim().toLowerCase();
+                revertInscForm.classList.add('hidden');
+
+                if (searchTerm.length < 3) {
+                    revertInscResults.innerHTML = '';
+                    return;
+                }
+
+                searchRevertInscTimeout = setTimeout(() => {
+                    const results = dataCache.alumnos.filter(s => s.estado === 'Activo' && (s.nombreCompleto.toLowerCase().includes(searchTerm) || (s.documentoIdentidad && s.documentoIdentidad.includes(searchTerm))));
+
+                    revertInscResults.innerHTML = '';
+                    if (results.length > 0) {
+                        results.forEach(student => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 border-b cursor-pointer hover:bg-gray-100';
+                            div.textContent = `${student.nombreCompleto} (${student.documentoIdentidad || 'Sin DNI'})`;
+                            div.addEventListener('click', () => selectStudentForRevertInsc(student));
+                            revertInscResults.appendChild(div);
+                        });
+                    } else {
+                        revertInscResults.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron alumnos activos.</p>';
+                    }
+                }, 500);
+            });
+
+            async function selectStudentForRevertInsc(student) {
+                selectedStudentForRevertInsc = student;
+                revertInscResults.innerHTML = '';
+                searchRevertInscInput.value = '';
+                document.getElementById('student-revert-insc-name').textContent = student.nombreCompleto;
+
+                const detailsContainer = document.getElementById('revert-insc-details');
+                detailsContainer.innerHTML = '<div class="loader inline-block"></div> Buscando registro...';
+                revertInscForm.classList.remove('hidden');
+
+                const q = query(
+                    collection(db, "historialAlumnos"),
+                    where("alumnoId", "==", student.id),
+                    where("tipoAccion", "==", "Inscripción"),
+                    orderBy("fecha", "desc"),
+                    limit(1)
+                );
+
+                const historySnap = await getDocs(q);
+                if (historySnap.empty) {
+                    detailsContainer.innerHTML = '<p class="text-red-600 font-semibold">Error: No se encontró un registro de "Inscripción" para este alumno.</p>';
+                    document.getElementById('revert-insc-btn').disabled = true;
+                    historyRecordToRevertInsc = null;
+                } else {
+                    historyRecordToRevertInsc = { id: historySnap.docs[0].id, ...historySnap.docs[0].data() };
+                    const details = historyRecordToRevertInsc.detalles || {};
+                    const fecha = historyRecordToRevertInsc.fecha.toDate().toLocaleString('es-PE');
+                    detailsContainer.innerHTML = `
+                        <p><strong>Acción:</strong> ${historyRecordToRevertInsc.tipoAccion}</p>
+                        <p><strong>Fecha:</strong> ${fecha}</p>
+                        <p><strong>Aula de Inscripción:</strong> ${details.aula || 'N/A'}</p>
+                    `;
+                    document.getElementById('revert-insc-btn').disabled = false;
+                }
+            }
+
+            document.getElementById('revert-insc-btn').addEventListener('click', async () => {
+                if (!selectedStudentForRevertInsc || !historyRecordToRevertInsc) return;
+
+                const confirmed = await customConfirm(`¿Estás seguro de revertir la inscripción de ${selectedStudentForRevertInsc.nombreCompleto}? Su estado volverá a 'Registrado' y se anulará esta acción.`);
+                if (!confirmed) return;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const alumnoRef = doc(db, "alumnos", selectedStudentForRevertInsc.id);
+                        const historyRef = doc(db, "historialAlumnos", historyRecordToRevertInsc.id);
+                        
+                        const aulaIncorrecta = dataCache.aulas.find(a => a.codigoAula === selectedStudentForRevertInsc.aulaActual);
+                        
+                        if (aulaIncorrecta) {
+                            const aulaRef = doc(db, "aulas", aulaIncorrecta.id);
+                            const aulaDoc = await transaction.get(aulaRef);
+                            if (aulaDoc.exists()) {
+                                const newCount = Math.max(0, (aulaDoc.data().cantidadAlumnos || 1) - 1);
+                                transaction.update(aulaRef, { cantidadAlumnos: newCount });
+                            }
+                        }
+
+                        transaction.update(alumnoRef, { 
+                            estado: 'Registrado',
+                            aulaActual: null,
+                            cicloInscrito: null
+                        });
+
+                        transaction.delete(historyRef);
+                    });
+
+                    await logAction("Reversión de Inscripción", `Se revirtió la inscripción del alumno ${selectedStudentForRevertInsc.nombreCompleto} (ID: ${selectedStudentForRevertInsc.id}).`);
+                    showNotification("Inscripción revertida exitosamente.", "success");
+                    revertInscForm.classList.add('hidden');
+                    showSelector();
+
+                } catch (error) {
+                    showNotification(`Error al revertir: ${error.message}`, "error");
+                    console.error("Error en la transacción de reversión:", error);
+                }
+            });
+            // --- FIN DE LA ACTUALIZACIÓN ---
+
+
+            // --- Herramienta para Limpiar Nota de Historial ---
+            const searchStudentHistoryInput = document.getElementById('search-student-history');
+            const studentHistoryResults = document.getElementById('student-history-results');
+            const historyRecordsContainer = document.getElementById('history-records-container');
+            let searchHistoryTimeout;
+            let selectedStudentForHistory = null;
+            
+            searchStudentHistoryInput.addEventListener('input', () => {
+                clearTimeout(searchHistoryTimeout);
+                const searchTerm = searchStudentHistoryInput.value.trim().toLowerCase();
+                historyRecordsContainer.classList.add('hidden');
+                studentHistoryResults.innerHTML = '';
+                if (searchTerm.length < 3) return;
+                
+                searchHistoryTimeout = setTimeout(() => {
+                    const results = dataCache.alumnos.filter(student => 
+                        student.nombreCompleto.toLowerCase().includes(searchTerm) || (student.documentoIdentidad && student.documentoIdentidad.includes(searchTerm))
+                    );
+
+                    if (results.length > 0) {
+                        results.forEach(student => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 border-b cursor-pointer hover:bg-gray-100';
+                            div.textContent = `${student.nombreCompleto} (${student.documentoIdentidad || 'Sin DNI'})`;
+                            div.addEventListener('click', () => loadStudentHistoryRecords(student));
+                            studentHistoryResults.appendChild(div);
+                        });
+                    } else {
+                        studentHistoryResults.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron alumnos.</p>';
+                    }
+                }, 500);
+            });
+            
+            async function loadStudentHistoryRecords(student) {
+                selectedStudentForHistory = student;
+                searchStudentHistoryInput.value = '';
+                studentHistoryResults.innerHTML = '';
+                historyRecordsContainer.classList.remove('hidden');
+                historyRecordsContainer.innerHTML = '<div class="loader inline-block"></div>';
+                
+                const q = query(collection(db, "historialAlumnos"), where("alumnoId", "==", student.id), orderBy("fecha", "desc"));
+                const snapshot = await getDocs(q);
+                
+                historyRecordsContainer.innerHTML = `<p class="font-semibold text-lg text-gray-800 mb-2">Historial de: ${student.nombreCompleto}</p>`;
+                if (snapshot.empty) {
+                    historyRecordsContainer.innerHTML += '<p class="text-sm text-gray-500">Este alumno no tiene historial.</p>';
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const record = {id: doc.id, ...doc.data()};
+                    const hasNote = record.detalles && typeof record.detalles.notaFinal !== 'undefined' && record.detalles.notaFinal !== null;
+                    if (!hasNote) return;
+
+                    const div = document.createElement('div');
+                    div.className = 'p-3 bg-white rounded-md border flex justify-between items-center';
+                    div.innerHTML = `
+                        <div>
+                            <p class="font-semibold">${record.tipoAccion} <span class="font-normal text-sm text-gray-500">- ${record.fecha.toDate().toLocaleDateString('es-ES')}</span></p>
+                            <p class="text-sm">Aula: ${record.detalles.aula || 'N/A'}, Ciclo: ${record.detalles.ciclo || 'N/A'}</p>
+                            <p class="text-sm text-red-600 font-bold">Nota Registrada: ${record.detalles.notaFinal}</p>
+                        </div>
+                        <button data-record-id="${record.id}" class="clear-note-btn danger-btn text-xs py-1 px-3">Limpiar Nota</button>
+                    `;
+                    historyRecordsContainer.appendChild(div);
+                });
+            }
+
+            historyRecordsContainer.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('clear-note-btn')) {
+                    const recordId = e.target.dataset.recordId;
+                    const confirmed = await customConfirm("¿Estás seguro de que quieres eliminar la nota final de este registro? Esta acción es irreversible.");
+                    if(confirmed) {
+                        try {
+                            const recordRef = doc(db, "historialAlumnos", recordId);
+                            await updateDoc(recordRef, {
+                                "detalles.notaFinal": deleteField()
+                            });
+                            showNotification("Nota eliminada del registro de historial.", "success");
+                            await logAction("Limpieza de Nota", `Se eliminó la nota final del registro de historial con ID: ${recordId} para el alumno ${selectedStudentForHistory.nombreCompleto}.`);
+                            loadStudentHistoryRecords(selectedStudentForHistory);
+                        } catch (error) {
+                            showNotification("Error al eliminar la nota.", "error");
+                            console.error("Error clearing note:", error);
+                        }
+                    }
+                }
+            });
+
+            // --- Lógica para Revertir Egreso ---
+            const searchRevertInput = document.getElementById('search-student-revert');
+            const revertResultsContainer = document.getElementById('student-revert-results');
+            const revertForm = document.getElementById('student-revert-form');
+            let searchRevertTimeout;
+            let selectedStudentForRevert = null;
+
+            searchRevertInput.addEventListener('input', () => {
+                clearTimeout(searchRevertTimeout);
+                const searchTerm = searchRevertInput.value.trim().toLowerCase();
+                revertForm.classList.add('hidden');
+                selectedStudentForRevert = null;
+
+                if (searchTerm.length < 3) {
+                    revertResultsContainer.innerHTML = '';
+                    return;
+                }
+
+                searchRevertTimeout = setTimeout(() => {
+                    const results = dataCache.alumnos.filter(s => s.estado === 'Egresado' && (s.nombreCompleto.toLowerCase().includes(searchTerm) || (s.documentoIdentidad && s.documentoIdentidad.includes(searchTerm))));
+                    
+                    revertResultsContainer.innerHTML = '';
+                    if (results.length > 0) {
+                        results.forEach(student => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 border-b cursor-pointer hover:bg-gray-100';
+                            div.textContent = `${student.nombreCompleto} (${student.documentoIdentidad || 'Sin DNI'})`;
+                            div.addEventListener('click', () => {
+                                selectedStudentForRevert = student;
+                                document.getElementById('student-revert-name').textContent = student.nombreCompleto;
+                                revertForm.classList.remove('hidden');
+                                revertResultsContainer.innerHTML = '';
+                                searchRevertInput.value = '';
+                            });
+                            revertResultsContainer.appendChild(div);
+                        });
+                    } else {
+                        revertResultsContainer.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron alumnos egresados con ese término.</p>';
+                    }
+                }, 500);
+            });
+
+            document.getElementById('revert-egreso-btn').addEventListener('click', async () => {
+                if (!selectedStudentForRevert) return;
+
+                const confirmed = await customConfirm(`¿Estás seguro de revertir el egreso de ${selectedStudentForRevert.nombreCompleto}? Se eliminará el registro de egreso y su estado volverá a 'Activo'.`);
+                if (!confirmed) return;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const studentRef = doc(db, "alumnos", selectedStudentForRevert.id);
+                        
+                        const historyQuery = query(
+                            collection(db, "historialAlumnos"),
+                            where("alumnoId", "==", selectedStudentForRevert.id),
+                            where("tipoAccion", "==", "Egreso"),
+                            orderBy("fecha", "desc"),
+                            limit(1)
+                        );
+                        
+                        const historySnap = await getDocs(historyQuery);
+                        if (historySnap.empty) {
+                            throw new Error("No se encontró el registro de egreso para este alumno en su historial.");
+                        }
+                        const historyDocRef = historySnap.docs[0].ref;
+                        
+                        transaction.delete(historyDocRef);
+                        transaction.update(studentRef, { estado: 'Activo' });
+                    });
+
+                    await logAction("Reversión de Egreso", `Se revirtió el egreso del alumno ${selectedStudentForRevert.nombreCompleto} (ID: ${selectedStudentForRevert.id}).`);
+                    showNotification("Egreso revertido exitosamente. El alumno ahora está 'Activo'.", "success");
+                    revertForm.classList.add('hidden');
+
+                } catch (error) {
+                    showNotification(`Error al revertir el egreso: ${error.message}`, "error");
+                    console.error("Error en la reversión:", error);
+                }
+            });
+
+            // --- Lógica de la Herramienta de Corrección de Asignación ---
+            const searchCorrectionInput = document.getElementById('search-student-correction');
+            const correctionResultsContainer = document.getElementById('student-correction-results');
+            const correctionForm = document.getElementById('student-correction-form');
+            let searchCorrectionTimeout;
+            let selectedStudentForCorrection = null;
+
+            searchCorrectionInput.addEventListener('input', () => {
+                clearTimeout(searchCorrectionTimeout);
+                const searchTerm = searchCorrectionInput.value.trim().toLowerCase();
+                correctionForm.classList.add('hidden');
+                selectedStudentForCorrection = null;
+
+                if (searchTerm.length < 3) {
+                    correctionResultsContainer.innerHTML = '';
+                    return;
+                }
+
+                searchCorrectionTimeout = setTimeout(() => {
+                    const results = dataCache.alumnos.filter(student => student.nombreCompleto.toLowerCase().includes(searchTerm) || (student.documentoIdentidad && student.documentoIdentidad.includes(searchTerm)));
+
+                    correctionResultsContainer.innerHTML = '';
+                    if (results.length > 0) {
+                        results.forEach(student => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 border-b cursor-pointer hover:bg-gray-100';
+                            div.textContent = `${student.nombreCompleto} (Estado: ${student.estado})`;
+                            div.addEventListener('click', () => selectStudentForCorrection(student));
+                            correctionResultsContainer.appendChild(div);
+                        });
+                    } else {
+                        correctionResultsContainer.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron alumnos.</p>';
+                    }
+                }, 500);
+            });
+
+            function selectStudentForCorrection(student) {
+                selectedStudentForCorrection = student;
+                document.getElementById('student-correction-name').textContent = `${student.nombreCompleto} (Estado Actual: ${student.estado})`;
+                document.getElementById('current-aula-display').textContent = student.aulaActual || 'Sin Asignar';
+                correctionResultsContainer.innerHTML = '';
+                searchCorrectionInput.value = '';
+
+                const newAulaSelect = document.getElementById('new-aula-select');
+                newAulaSelect.innerHTML = '<option>Cargando aulas...</option>';
+                const aulasActivas = dataCache.aulas
+                    .filter(a => ['Programada', 'En Curso'].includes(a.estado))
+                    .sort((a, b) => {
+                        const tipoCompare = a.tipoAula.localeCompare(b.tipoAula);
+                        if (tipoCompare !== 0) return tipoCompare;
+                        return a.ciclo - b.ciclo;
+                    });
+
+                newAulaSelect.innerHTML = '<option value="">Seleccione la nueva aula correcta</option>';
+                aulasActivas.forEach(aula => {
+                    if (aula.codigoAula !== student.aulaActual) {
+                        newAulaSelect.innerHTML += `<option value="${aula.codigoAula}" data-ciclo="${aula.ciclo}">${aula.codigoAula}</option>`;
+                    }
+                });
+
+                correctionForm.classList.remove('hidden');
+            }
+
+            document.getElementById('correct-assignment-btn').addEventListener('click', async () => {
+                if (!selectedStudentForCorrection) return;
+
+                const newAulaCodigo = document.getElementById('new-aula-select').value;
+                const selectedOption = document.getElementById('new-aula-select').selectedOptions[0];
+                const newCiclo = selectedOption.dataset.ciclo;
+
+                if (!newAulaCodigo) {
+                    showNotification("Por favor, selecciona un aula de destino.", "error");
+                    return;
+                }
+
+                const confirmed = await customConfirm(`¿Estás seguro de mover a ${selectedStudentForCorrection.nombreCompleto} al aula ${newAulaCodigo}? Su estado cambiará a 'Activo' y se ajustarán los contadores.`);
+                if (!confirmed) return;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const studentRef = doc(db, "alumnos", selectedStudentForCorrection.id);
+                        const newAula = dataCache.aulas.find(a => a.codigoAula === newAulaCodigo);
+                        if (!newAula) throw new Error("El aula de destino no fue encontrada.");
+                        const newAulaRef = doc(db, 'aulas', newAula.id);
+                        
+                        let oldAulaRef = null;
+                        const oldAulaCodigo = selectedStudentForCorrection.aulaActual;
+                        if (oldAulaCodigo && !oldAulaCodigo.startsWith("Sin aula")) {
+                            const oldAula = dataCache.aulas.find(a => a.codigoAula === oldAulaCodigo);
+                            if (oldAula) {
+                                oldAulaRef = doc(db, 'aulas', oldAula.id);
+                            }
+                        }
+
+                        const newAulaDoc = await transaction.get(newAulaRef);
+                        let oldAulaDoc = null;
+                        if (oldAulaRef) {
+                            oldAulaDoc = await transaction.get(oldAulaRef);
+                        }
+                        
+                        if (oldAulaRef && oldAulaDoc && oldAulaDoc.exists()) {
+                            const oldCount = oldAulaDoc.data().cantidadAlumnos || 0;
+                            transaction.update(oldAulaRef, { cantidadAlumnos: Math.max(0, oldCount - 1) });
+                        }
+                        
+                        const newCount = (newAulaDoc.data().cantidadAlumnos || 0) + 1;
+                        transaction.update(newAulaRef, { cantidadAlumnos: newCount });
+
+                        transaction.update(studentRef, {
+                            estado: 'Activo',
+                            aulaActual: newAulaCodigo,
+                            cicloInscrito: parseInt(newCiclo)
+                        });
+                    });
+
+                    await logAction("Corrección de Asignación", `Se movió al alumno ${selectedStudentForCorrection.nombreCompleto} desde ${selectedStudentForCorrection.aulaActual} a ${newAulaCodigo}.`);
+                    showNotification("Asignación de alumno corregida exitosamente.", "success");
+                    correctionForm.classList.add('hidden');
+                    showSelector();
+
+                } catch (error) {
+                    showNotification(`Error al corregir la asignación: ${error.message}`, "error");
+                    console.error("Error en la corrección:", error);
+                }
+            });
+            
+            // --- Lógica para Procesar Traslado Pendiente Manualmente ---
+            const searchPendingTransferInput = document.getElementById('search-pending-transfer');
+            const pendingTransferResults = document.getElementById('pending-transfer-results');
+            const pendingTransferForm = document.getElementById('pending-transfer-form');
+            let searchTransferTimeout;
+            let selectedTransfer = null;
+
+            searchPendingTransferInput.addEventListener('input', () => {
+                clearTimeout(searchTransferTimeout);
+                const searchTerm = searchPendingTransferInput.value.trim().toLowerCase();
+                pendingTransferForm.classList.add('hidden');
+                selectedTransfer = null;
+                
+                if (searchTerm.length < 3) {
+                    pendingTransferResults.innerHTML = '';
+                    return;
+                }
+
+                searchTransferTimeout = setTimeout(() => {
+                    const results = dataCache.trasladosPendientes.filter(t => 
+                        t.estado === 'Pendiente' && t.nombreAlumno.toLowerCase().includes(searchTerm)
+                    );
+                    
+                    pendingTransferResults.innerHTML = '';
+                    if (results.length > 0) {
+                        results.forEach(transfer => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 border-b cursor-pointer hover:bg-gray-100';
+                            div.textContent = `${transfer.nombreAlumno} (De ${transfer.aulaOrigen} a ${transfer.aulaDestino})`;
+                            div.addEventListener('click', () => {
+                                selectedTransfer = transfer;
+                                document.getElementById('pending-transfer-name').textContent = transfer.nombreAlumno;
+                                document.getElementById('pending-transfer-origin').textContent = transfer.aulaOrigen;
+                                document.getElementById('pending-transfer-destination').textContent = transfer.aulaDestino;
+                                pendingTransferForm.classList.remove('hidden');
+                                pendingTransferResults.innerHTML = '';
+                                searchPendingTransferInput.value = '';
+                            });
+                            pendingTransferResults.appendChild(div);
+                        });
+                    } else {
+                        pendingTransferResults.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron traslados pendientes.</p>';
+                    }
+                }, 500);
+            });
+
+            document.getElementById('process-transfer-btn').addEventListener('click', async () => {
+                if (!selectedTransfer) return;
+
+                const confirmed = await customConfirm(`¿Confirmas el procesamiento manual del traslado de ${selectedTransfer.nombreAlumno} al aula ${selectedTransfer.aulaDestino}?`);
+                if (!confirmed) return;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const studentRef = doc(db, "alumnos", selectedTransfer.alumnoId);
+                        const destinationAula = dataCache.aulas.find(a => a.codigoAula === selectedTransfer.aulaDestino);
+                        const transferRef = doc(db, "trasladosPendientes", selectedTransfer.id);
+                        
+                        if (!destinationAula) throw new Error("El aula de destino ya no existe.");
+                        
+                        const destinationAulaRef = doc(db, 'aulas', destinationAula.id);
+                        const destinationDoc = await transaction.get(destinationAulaRef);
+                        transaction.update(destinationAulaRef, { cantidadAlumnos: (destinationDoc.data().cantidadAlumnos || 0) + 1 });
+                        
+                        transaction.update(studentRef, {
+                            estado: 'Activo',
+                            aulaActual: selectedTransfer.aulaDestino,
+                            cicloInscrito: selectedTransfer.cicloDestino
+                        });
+                        
+                        transaction.update(transferRef, { estado: 'Completado' });
+                    });
+                    
+                    await logAction("Procesamiento Manual de Traslado", `Se procesó el traslado de ${selectedTransfer.nombreAlumno} de ${selectedTransfer.aulaOrigen} a ${selectedTransfer.aulaDestino}.`);
+                    showNotification("Traslado procesado exitosamente.", "success");
+                    pendingTransferForm.classList.add('hidden');
+                    showSelector();
+                    
+                } catch (error) {
+                    showNotification(`Error al procesar el traslado: ${error.message}`, 'error');
+                    console.error("Error en el procesamiento manual:", error);
+                }
+            });
+
+
+            // --- Lógica de Borrado Específico ---
+            const deleteTypeSelect = document.getElementById('delete-type-select');
+            const searchSpecificInput = document.getElementById('search-specific-input');
+            const searchSpecificResults = document.getElementById('search-specific-results');
+            const recordToDeleteContainer = document.getElementById('record-to-delete-container');
+            const recordNameDisplay = document.getElementById('record-name-display');
+            const deleteSpecificBtn = document.getElementById('delete-specific-btn');
+            let selectedRecordForDelete = null;
+            let searchDeleteTimeout;
+
+            function resetDeleteForm() {
+                searchSpecificInput.value = '';
+                searchSpecificResults.innerHTML = '';
+                recordToDeleteContainer.classList.add('hidden');
+                selectedRecordForDelete = null;
+            }
+
+            deleteTypeSelect.addEventListener('change', resetDeleteForm);
+
+            searchSpecificInput.addEventListener('input', () => {
+                clearTimeout(searchDeleteTimeout);
+                const searchTerm = searchSpecificInput.value.trim().toLowerCase();
+                recordToDeleteContainer.classList.add('hidden');
+                selectedRecordForDelete = null;
+
+                if (searchTerm.length < 3) {
+                    searchSpecificResults.innerHTML = '';
+                    return;
+                }
+
+                searchDeleteTimeout = setTimeout(() => {
+                    const collectionName = deleteTypeSelect.value;
+                    const results = dataCache[collectionName].filter(record => {
+                        let mainField = record.nombreCompleto || record.codigoAula || record.email || '';
+                        let secondaryField = record.documentoIdentidad || record.nombreDocente || record.rol || '';
+                        return mainField.toLowerCase().includes(searchTerm) || (secondaryField && secondaryField.toLowerCase().includes(searchTerm));
+                    });
+
+                    searchSpecificResults.innerHTML = '';
+                    if (results.length > 0) {
+                        results.forEach(record => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 border-b cursor-pointer hover:bg-gray-100';
+                            let mainText = record.nombreCompleto || record.codigoAula || record.email;
+                            let secondaryText = record.documentoIdentidad || record.nombreDocente || record.rol;
+                            div.textContent = `${mainText} (${secondaryText || 'Sin info adicional'})`;
+                            div.addEventListener('click', () => {
+                                selectedRecordForDelete = record;
+                                recordNameDisplay.textContent = `${mainText} (ID: ${record.id})`;
+                                recordToDeleteContainer.classList.remove('hidden');
+                                searchSpecificResults.innerHTML = '';
+                                searchSpecificInput.value = '';
+                            });
+                            searchSpecificResults.appendChild(div);
+                        });
+                    } else {
+                        searchSpecificResults.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron registros.</p>';
+                    }
+                }, 500);
+            });
+
+            deleteSpecificBtn.addEventListener('click', async () => {
+                if (!selectedRecordForDelete) return;
+
+                const collectionName = deleteTypeSelect.value;
+                const recordName = selectedRecordForDelete.nombreCompleto || selectedRecordForDelete.codigoAula || selectedRecordForDelete.email;
+
+                const firstConfirm = await customConfirm(`¿Estás seguro de que quieres eliminar "${recordName}"? Esta acción es IRREVERSIBLE.`);
+                if (!firstConfirm) return;
+
+                if (collectionName === 'alumnos') {
+                    const secondConfirm = await customConfirm(`CONFIRMACIÓN FINAL: Esto también eliminará todo el historial asociado al alumno y actualizará el conteo en su aula. ¿Continuar?`);
+                    if (!secondConfirm) return;
+                }
+                
+                showNotification(`Iniciando eliminación de ${recordName}...`, 'info');
+
+                try {
+                    if (collectionName === 'alumnos') {
+                        await runTransaction(db, async (transaction) => {
+                            const mainDocRef = doc(db, "alumnos", selectedRecordForDelete.id);
+                            const alumnoDoc = await transaction.get(mainDocRef);
+                            if (!alumnoDoc.exists()) {
+                                throw new Error("El alumno ya no existe.");
+                            }
+                            const alumnoData = alumnoDoc.data();
+
+                            if (alumnoData.aulaActual && !alumnoData.aulaActual.startsWith("Sin aula")) {
+                                const aula = dataCache.aulas.find(a => a.codigoAula === alumnoData.aulaActual);
+                                if (aula) {
+                                    const aulaRef = doc(db, 'aulas', aula.id);
+                                    const aulaDoc = await transaction.get(aulaRef);
+                                    if(aulaDoc.exists()){
+                                        transaction.update(aulaRef, { cantidadAlumnos: Math.max(0, (aulaDoc.data().cantidadAlumnos || 1) - 1) });
+                                    }
+                                }
+                            }
+
+                            const collectionsToClean = ['historialAlumnos', 'seguimientos', 'trasladosPendientes'];
+                            for (const collName of collectionsToClean) {
+                                const q = query(collection(db, collName), where("alumnoId", "==", selectedRecordForDelete.id));
+                                const snapshot = await getDocs(q); 
+                                snapshot.forEach(docToDelete => transaction.delete(docToDelete.ref));
+                            }
+                            
+                            transaction.delete(mainDocRef);
+                        });
+                    } else {
+                        await deleteDoc(doc(db, collectionName, selectedRecordForDelete.id));
+                    }
+
+                    await logAction(`Borrado Específico de ${collectionName}`, `Se eliminó el registro ${recordName} (ID: ${selectedRecordForDelete.id}).`);
+                    showNotification(`¡Registro "${recordName}" eliminado exitosamente!`, 'success');
+                    
+                    resetDeleteForm();
+                    showSelector();
+
+                } catch (error) {
+                    showNotification(`Error al eliminar el registro: ${error.message}`, 'error');
+                    console.error("Error deleting record:", error);
+                }
+            });
+
+            // --- Lógica para Recuperar Aula Cerrada ---
+            const searchAulaRecoverInput = document.getElementById('search-aula-recover');
+            const aulaRecoverResults = document.getElementById('aula-recover-results');
+            const aulaRecoverForm = document.getElementById('aula-recover-form');
+            let searchAulaTimeout;
+            let selectedHistoryRecord = null;
+
+            searchAulaRecoverInput.addEventListener('input', () => {
+                clearTimeout(searchAulaTimeout);
+                const searchTerm = searchAulaRecoverInput.value.trim().toLowerCase();
+                aulaRecoverForm.classList.add('hidden');
+                selectedHistoryRecord = null;
+
+                if (searchTerm.length < 3) {
+                    aulaRecoverResults.innerHTML = '';
+                    return;
+                }
+
+                searchAulaTimeout = setTimeout(() => {
+                    const existingAulaIds = new Set(dataCache.aulas.map(d => d.id));
+                    const results = [];
+                    dataCache.historialCarteras.forEach(record => {
+                        const aulaData = record.datosAula;
+                        if (!existingAulaIds.has(record.aulaId) && aulaData.codigoAula.toLowerCase().includes(searchTerm)) {
+                            results.push(record);
+                        }
+                    });
+
+                    aulaRecoverResults.innerHTML = '';
+                    if (results.length > 0) {
+                        results.forEach(record => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 border-b cursor-pointer hover:bg-gray-100';
+                            div.textContent = `${record.datosAula.codigoAula} (Cerrada en Historial)`;
+                            div.addEventListener('click', () => {
+                                selectedHistoryRecord = record;
+                                document.getElementById('aula-recover-name').textContent = record.datosAula.codigoAula;
+                                aulaRecoverForm.classList.remove('hidden');
+                                aulaRecoverResults.innerHTML = '';
+                                searchAulaRecoverInput.value = '';
+                            });
+                            aulaRecoverResults.appendChild(div);
+                        });
+                    } else {
+                        searchSpecificResults.innerHTML = '<p class="p-2 text-sm text-gray-500">No se encontraron aulas eliminadas con ese código en el historial.</p>';
+                    }
+                }, 500);
+            });
+
+            document.getElementById('recover-aula-btn').addEventListener('click', async () => {
+                if (!selectedHistoryRecord) return;
+                
+                const aulaData = selectedHistoryRecord.datosAula;
+                const aulaId = selectedHistoryRecord.aulaId;
+
+                const confirmed = await customConfirm(`¿Estás seguro de que quieres restaurar el aula ${aulaData.codigoAula}? Se creará de nuevo en la base de datos principal con estado 'Cerrada'.`);
+                if (!confirmed) return;
+                
+                try {
+                    // Convertir campos de fecha si no son Timestamps
+                    if (aulaData.fechaInicio && !aulaData.fechaInicio.toDate) {
+                        aulaData.fechaInicio = Timestamp.fromDate(new Date(aulaData.fechaInicio));
+                    }
+                    if (aulaData.fechaFin && !aulaData.fechaFin.toDate) {
+                        aulaData.fechaFin = Timestamp.fromDate(new Date(aulaData.fechaFin));
+                    }
+
+                    await setDoc(doc(db, "aulas", aulaId), aulaData);
+
+                    await logAction("Recuperación de Aula", `Se restauró el aula ${aulaData.codigoAula} (ID: ${aulaId}) desde el historial.`);
+                    showNotification(`¡Aula ${aulaData.codigoAula} restaurada exitosamente!`, 'success');
+                    aulaRecoverForm.classList.add('hidden');
+                    showSelector();
+                } catch (error) {
+                    showNotification(`Error al restaurar el aula: ${error.message}`, "error");
+                    console.error("Error en la restauración:", error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Cobranzas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+        <h2 class="text-3xl font-bold text-gray-800">Cartera de Cobranza</h2>
+        <div class="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm">
+            <label for="month-filter" class="font-semibold">Mes:</label>
+            <select id="month-filter" class="p-2 border rounded-md"></select>
+            <select id="year-filter" class="p-2 border rounded-md"></select>
+            <button id="view-cartera-btn" class="btn-primary font-bold py-2 px-4 rounded-md">Ver Cartera</button>
+        </div>
+    </div>
+
+    <div id="aulas-container" class="space-y-6">
+        <div class="card p-8 text-center text-gray-500">
+            <div class="loader inline-block"></div>
+            <h3 class="font-bold text-lg mt-4">Cargando datos en tiempo real...</h3>
+        </div>
+    </div>
+
+    <!-- Modal para Registrar Notas -->
+    <div id="notes-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="card p-6 rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b pb-4">
+                <h3 id="notes-modal-title" class="text-2xl font-bold text-gray-800">Registrar Notas Finales</h3>
+                <button id="close-notes-modal" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto pr-2">
+                <p class="text-sm text-gray-600 mb-4">Ingrese la nota final (de 0 a 20) para cada alumno. Se aprueba con 11 o más.</p>
+                <form id="form-notes">
+                    <div id="notes-student-list" class="space-y-3"></div>
+                    <div class="mt-6 flex justify-end">
+                        <button type="submit" class="btn-primary py-2 px-6 rounded-md font-bold">Guardar Notas</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal para Configurar Siguiente Ciclo -->
+    <div id="config-cycle-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="card p-6 rounded-lg w-full max-w-5xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b pb-4">
+                <h3 id="config-modal-title" class="text-2xl font-bold text-gray-800">Configurar Siguiente Ciclo</h3>
+                <button id="close-config-modal" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Panel de Información -->
+                <div id="info-panel" class="space-y-4">
+                    <h4 class="font-bold text-lg">Información del Ciclo Actual</h4>
+                    <div id="info-panel-content" class="text-sm space-y-2"></div>
+                    <h4 class="font-bold text-lg mt-4">Alumnos que Continúan al Siguiente Ciclo</h4>
+                    <div id="info-panel-alumnos" class="text-sm border rounded-md max-h-60 overflow-y-auto"></div>
+                </div>
+                <!-- Panel de Acción -->
+                <div id="action-panel" class="space-y-6">
+                    <!-- Opción 1: Avanzar Ciclo -->
+                    <div id="avanzar-ciclo-container" class="border rounded-lg p-4 bg-gray-50">
+                        <h4 class="font-bold text-lg text-green-700">Opción 1: Avanzar al Siguiente Ciclo</h4>
+                        <p class="text-xs text-gray-500 mb-4">Usa esta opción si el aula continúa. Se archivará la cartera actual, se actualizará el ciclo, las fechas y se procesarán los traslados pendientes hacia esta aula.</p>
+                        <form id="form-avanzar-ciclo" class="space-y-3">
+                            <div><label class="font-semibold">Ciclo Siguiente:</label> <span id="next-cycle-span" class="text-xl font-bold ml-2"></span></div>
+                            <div><label class="font-semibold block mb-1">Nuevas Fechas:</label>
+                                <div class="flex gap-4">
+                                    <input type="date" id="new-start-date" class="w-full p-2 border rounded" required>
+                                    <input type="date" id="new-end-date" class="w-full p-2 border rounded" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full btn-primary bg-green-600 hover:bg-green-700 p-2 rounded-md font-bold">Confirmar y Avanzar Ciclo</button>
+                        </form>
+                    </div>
+                    <!-- Opción 2: Cerrar Aula -->
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-bold text-lg text-red-700">Opción 2: Cerrar Aula</h4>
+                        <p class="text-xs text-gray-500 mb-4">Usa esta opción si el aula no continúa. Se archivará la cartera y los alumnos quedarán sin aula asignada.</p>
+                        <form id="form-cerrar-aula" class="space-y-3">
+                            <select id="motivo-cierre" class="w-full p-2 border rounded" required>
+                                <option value="">Seleccione un motivo de cierre...</option>
+                                <option value="Baja inscripción de alumnos">Baja inscripción de alumnos</option>
+                                <option value="Finalización de curso único">Finalización de curso único</option>
+                                <option value="Aula fusionada con otro grupo">Aula fusionada con otro grupo</option>
+                                <option value="No hay docente disponible">No hay docente disponible</option>
+                                <option value="Decisión administrativa">Decisión administrativa</option>
+                                <option value="Finalización del programa al 100%">Finalización del programa al 100%</option>
+                            </select>
+                            <button type="submit" class="w-full btn-primary p-2 rounded-md font-bold">Confirmar Cierre Definitivo</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, where, Timestamp, getDocs, doc, runTransaction, addDoc, writeBatch, getDoc, orderBy, limit, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+            authDomain: "bdv3-ipch.firebaseapp.com",
+            projectId: "bdv3-ipch",
+            storageBucket: "bdv3-ipch.firebasestorage.app",
+            messagingSenderId: "993842726107",
+            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- Cachés de datos en tiempo real ---
+        let dataCache = {
+            alumnos: [],
+            aulas: [],
+            historialCarteras: [],
+            historialAlumnos: [],
+            trasladosPendientes: []
+        };
+        let currentAulaIdForNotes = null;
+
+        // --- Ayudantes de Comunicación ---
+        function showNotification(message, type = 'success', duration = 5000) {
+            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
+        }
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                const confirmId = Math.random().toString(36).substring(2, 15);
+                const listener = (event) => {
+                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
+                        window.removeEventListener('message', listener);
+                        resolve(event.data.result);
+                    }
+                };
+                window.addEventListener('message', listener);
+                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
+            });
+        }
+        
+        const currentUserEmail = new URLSearchParams(window.location.search).get('user') || 'sistema@sgi.com';
+
+        async function logAction(action, description) {
+            try {
+                await addDoc(collection(db, 'historialCambios'), {
+                    fecha: Timestamp.now(), 
+                    usuario: currentUserEmail, 
+                    action: action, 
+                    description: description
+                });
+            } catch (error) { console.error("Error logging action:", error); }
+        }
+
+        function safeToDate(firestoreTimestamp) {
+            if (!firestoreTimestamp) return null;
+            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
+            if (typeof firestoreTimestamp === 'string') {
+                const date = new Date(firestoreTimestamp);
+                if (!isNaN(date)) return date;
+            }
+            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
+            return null;
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const monthFilter = document.getElementById('month-filter');
+            const yearFilter = document.getElementById('year-filter');
+            const aulasContainer = document.getElementById('aulas-container');
+            const viewCarteraBtn = document.getElementById('view-cartera-btn');
+
+            let currentAulaData = null;
+            let currentAlumnosList = [];
+            
+            function findLastPaymentFromCache(alumnoId) {
+                if (!alumnoId) return 0;
+                const historial = dataCache.historialAlumnos
+                    .filter(h => h.alumnoId === alumnoId)
+                    .sort((a, b) => b.fecha.toMillis() - a.fecha.toMillis());
+                
+                const accionesDePago = ["Inscripción", "Renovación", "Traslado por Cobro", "Reincorporación"];
+                for (const item of historial) {
+                    if (accionesDePago.includes(item.tipoAccion) && item.detalles?.montoPagado > 0) {
+                        return item.detalles.montoPagado;
+                    }
+                }
+                return 0;
+            }
+            
+            function renderAulaCard(aula, container, alumnos) {
+                const aulaCard = document.createElement('div');
+                aulaCard.id = `aula-card-${aula.id}`;
+                aulaCard.className = 'card p-6';
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const fechaFinObj = safeToDate(aula.fechaFin);
+                let fechaFinTexto = "N/A";
+                let fechaLabel = "Finaliza:";
+                if (fechaFinObj) {
+                    fechaFinTexto = fechaFinObj.toLocaleDateString('es-ES');
+                    fechaLabel = (fechaFinObj < today) ? "Finalizó:" : "Finalizará:";
+                }
+                
+                const isEnCobranza = aula.estado === 'En Cobranza';
+                const notasCompletas = alumnos.every(a => a.notaFinal !== null && typeof a.notaFinal !== 'undefined');
+                const noPendientes = !alumnos.some(a => a.estadoCobranza === 'Pendiente');
+                const canConfigure = isEnCobranza && notasCompletas && noPendientes;
+                
+                let titleMessage = "";
+                if (isEnCobranza && !notasCompletas) titleMessage = "Aún faltan registrar notas.";
+                else if (isEnCobranza && !noPendientes) titleMessage = "Aún hay alumnos con estado 'Pendiente'.";
+
+                let actionButtonsHTML = '';
+                if (isEnCobranza) {
+                    actionButtonsHTML = `
+                        <button data-aula-id="${aula.id}" class="register-notes-btn bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded-md">${notasCompletas ? 'Ver/Editar Notas' : 'Registrar Notas'}</button>
+                        <button data-aula-id="${aula.id}" class="config-cycle-btn btn-primary text-sm font-bold py-2 px-4 rounded-md ${!canConfigure ? 'opacity-50 cursor-not-allowed' : ''}" ${!canConfigure ? `disabled title="${titleMessage}"` : ''}>Configurar Ciclo</button>
+                    `;
+                }
+
+                const estadoClasses = { 'En Cobranza': 'text-red-600 font-bold', 'En Curso': 'text-green-600', 'Programada': 'text-blue-600', 'Cerrada': 'text-gray-400' };
+                const estadoClass = estadoClasses[aula.estado] || 'text-gray-600';
+
+                let docentesHTML = `<p class="text-gray-600"><strong>Docente:</strong> ${aula.nombreDocente}</p>`;
+                if (aula.docenteApoyo) docentesHTML += `<p class="text-gray-600 text-sm italic"><strong>Apoyo:</strong> ${aula.docenteApoyo}</p>`;
+
+                aulaCard.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-2xl font-bold text-red-600">${aula.codigoAula}</h3>
+                            ${docentesHTML}
+                            <p class="text-gray-600"><strong>Ciclo:</strong> ${aula.ciclo}</p>
+                            <p class="text-sm ${estadoClass}">${aula.isHistory ? 'Archivado' : aula.estado}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-semibold">${fechaLabel} <span class="font-normal">${fechaFinTexto}</span></p>
+                            <p class="mt-2 text-lg font-semibold">Deserción: <span class="text-red-500" id="desercion-${aula.id}">0%</span></p>
+                            <div class="mt-4 flex gap-2 justify-end">${actionButtonsHTML}</div>
+                        </div>
+                    </div>
+                    <div class="mt-4 border-t pt-4">
+                        <h4 class="font-semibold mb-2">Alumnos</h4>
+                        <div id="alumnos-aula-${aula.id}" class="text-gray-500 text-sm">Cargando...</div>
+                    </div>
+                `;
+                container.appendChild(aulaCard);
+            }
+            
+            function renderCarteraView() {
+                const selectedMonth = parseInt(monthFilter.value);
+                const selectedYear = parseInt(yearFilter.value);
+
+                const liveAulas = dataCache.aulas.filter(aula => {
+                    const fechaFin = safeToDate(aula.fechaFin);
+                    return fechaFin && fechaFin.getMonth() === selectedMonth && fechaFin.getFullYear() === selectedYear;
+                });
+                const historyAulas = dataCache.historialCarteras.filter(hc => 
+                    hc.mesArchivado === selectedMonth && hc.anoArchivado === selectedYear
+                ).map(hc => ({ 
+                    id: hc.aulaId, 
+                    ...hc.datosAula, 
+                    isHistory: true, 
+                    alumnosHistoricos: hc.alumnos 
+                }));
+                
+                let allAulas = [...historyAulas, ...liveAulas.filter(liveAula => !historyAulas.find(h => h.id === liveAula.id))];
+                allAulas.sort((a, b) => (safeToDate(a.fechaFin) || 0) - (safeToDate(b.fechaFin) || 0));
+                
+                aulasContainer.innerHTML = '';
+                if (allAulas.length === 0) {
+                    aulasContainer.innerHTML = '<p class="text-center text-gray-500">No hay aulas que finalicen o hayan finalizado en el mes seleccionado.</p>';
+                    return;
+                }
+
+                allAulas.forEach(aula => {
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    let dynamicEstado = aula.estado;
+                    if (!aula.isHistory && aula.estado !== 'Cerrada') {
+                        const fechaInicio = safeToDate(aula.fechaInicio);
+                        const fechaFin = safeToDate(aula.fechaFin);
+                        if (fechaInicio && fechaFin) {
+                            if (fechaInicio > today) dynamicEstado = 'Programada';
+                            else if (fechaFin < today) dynamicEstado = 'En Cobranza';
+                            else dynamicEstado = 'En Curso';
+                        }
+                    }
+                    
+                    const alumnos = getAlumnosParaCobranza(aula, dynamicEstado);
+                    renderAulaCard({ ...aula, estado: dynamicEstado }, aulasContainer, alumnos);
+                    renderAlumnosTable(document.getElementById(`alumnos-aula-${aula.id}`), alumnos, aula.isHistory);
+                    
+                    const retiradosCount = alumnos.filter(a => a.estadoCobranza === 'Retirado' || a.estadoCobranza === 'Pausado').length;
+                    const desercion = alumnos.length > 0 ? (retiradosCount / alumnos.length) * 100 : 0;
+                    const desercionSpan = document.getElementById(`desercion-${aula.id}`);
+                    if(desercionSpan) desercionSpan.textContent = `${desercion.toFixed(1)}%`;
+                });
+            }
+
+            // ========================================================================
+            // FUNCIÓN CORREGIDA: Se incluyen todas las acciones de ingreso posibles
+            // ========================================================================
+            function getAlumnosParaCobranza(aula, dynamicEstado) {
+                if (aula.isHistory) {
+                    return aula.alumnosHistoricos.map(alumno => ({
+                        ...alumno,
+                        ultimoMontoPagado: alumno.ultimoMontoPagado ?? findLastPaymentFromCache(alumno.id)
+                    }));
+                }
+                
+                let alumnosEnAula;
+                
+                if (dynamicEstado === 'Programada' || dynamicEstado === 'En Curso') {
+                    alumnosEnAula = dataCache.alumnos.filter(a => a.aulaActual === aula.codigoAula && a.estado === 'Activo');
+                
+                } else { 
+                    // 1. Encontrar candidatos
+                    const studentIdsInCycle = new Set(
+                        dataCache.historialAlumnos
+                            .filter(h => {
+                                const matchesStandardFormat = h.detalles?.aula === aula.codigoAula && h.detalles?.ciclo === aula.ciclo;
+                                const matchesTransferFormat = h.detalles?.aulaDestino === aula.codigoAula && h.detalles?.cicloDestino === aula.ciclo;
+                                
+                                // CORRECCIÓN: Se agregaron "Renovación" y "Traslado por Cobro"
+                                return (matchesStandardFormat || matchesTransferFormat) && 
+                                       ["Inscripción", "Reincorporación", "Traslado Académico", "Renovación", "Traslado por Cobro"].includes(h.tipoAccion);
+                            })
+                            .map(h => h.alumnoId)
+                    );
+                    
+                    // 2. Añadir actuales (con validación de ciclo)
+                    dataCache.alumnos.forEach(a => {
+                        if (a.aulaActual === aula.codigoAula && parseInt(a.cicloInscrito) === parseInt(aula.ciclo)) {
+                            studentIdsInCycle.add(a.id);
+                        }
+                    });
+
+                    const fechaFinAula = safeToDate(aula.fechaFin);
+                    
+                    // 3. Filtrar alumnos
+                    alumnosEnAula = dataCache.alumnos.filter(alumno => {
+                        if (!studentIdsInCycle.has(alumno.id)) return false;
+                        
+                        // --- FILTRO ANTI-FANTASMAS ---
+                        if (alumno.estado === 'Activo' && alumno.aulaActual && alumno.aulaActual !== aula.codigoAula) {
+                            const esTrasladoPendiente = dataCache.trasladosPendientes.some(t => 
+                                t.alumnoId === alumno.id && 
+                                t.aulaOrigen === aula.codigoAula && 
+                                t.estado === 'Pendiente'
+                            );
+                            if (!esTrasladoPendiente) {
+                                return false; 
+                            }
+                        }
+
+                        const accionDeSalida = dataCache.historialAlumnos.find(h => {
+                            if (h.alumnoId !== alumno.id || !["Retirado", "Pausado", "Traslado Académico"].includes(h.tipoAccion)) {
+                                return false;
+                            }
+                            const isNewFormat = h.detalles?.aulaOrigen === aula.codigoAula && h.detalles?.cicloOrigen === aula.ciclo;
+                            const isOldFormat = h.detalles?.aula === aula.codigoAula && h.detalles?.ciclo === aula.ciclo;
+                            return isNewFormat || isOldFormat;
+                        });
+
+                        if (accionDeSalida) {
+                            if (fechaFinAula) {
+                                const fechaAccion = accionDeSalida.fecha?.toDate 
+                                    ? accionDeSalida.fecha.toDate() 
+                                    : new Date(accionDeSalida.fecha);
+                                if (fechaAccion < fechaFinAula) {
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+                }
+
+                const cicloSiguiente = parseInt(aula.ciclo) + 1;
+                return alumnosEnAula.map(alumno => {
+                    let estadoCobranza; 
+
+                    const renovado = dataCache.historialAlumnos.some(h => 
+                        h.alumnoId === alumno.id && 
+                        h.tipoAccion === "Renovación" && 
+                        h.detalles?.aula === aula.codigoAula && 
+                        h.detalles?.ciclo === cicloSiguiente
+                    );
+                    
+                    if (renovado) {
+                        estadoCobranza = 'Renovado';
+                    } else {
+                        const trasladoPendiente = dataCache.trasladosPendientes.find(t => 
+                            t.alumnoId === alumno.id && 
+                            t.aulaOrigen === aula.codigoAula && 
+                            t.estado === "Pendiente"
+                        );
+                        
+                        if (trasladoPendiente) {
+                            estadoCobranza = `Trasladado (a ${trasladoPendiente.aulaDestino})`;
+                        } else {
+                            if (alumno.estado === 'Activo' && alumno.aulaActual === aula.codigoAula) {
+                                estadoCobranza = 'Pendiente';
+                            } else {
+                                estadoCobranza = alumno.estado;
+                            }
+                        }
+                    }
+
+                    return { 
+                        ...alumno, 
+                        estadoCobranza, 
+                        ultimoMontoPagado: findLastPaymentFromCache(alumno.id), 
+                        notaFinal: (dynamicEstado === 'Programada' || dynamicEstado === 'En Curso') ? null : (aula.notas?.[alumno.id] ?? null)
+                    };
+                });
+            }
+            
+            function renderAlumnosTable(container, alumnos, isHistory = false) {
+                const headers = isHistory 
+                    ? '<th class="py-2 w-10 text-center">#</th><th class="py-2">Alumno</th><th class="py-2">Teléfono</th><th class="py-2">Estado Final</th><th class="py-2 text-center">Nota</th><th class="py-2 text-right">Monto</th>'
+                    : '<th class="py-2 w-10 text-center">#</th><th class="py-2">Alumno</th><th class="py-2">Teléfono</th><th class="py-2">Estado</th><th class="py-2 text-center">Nota</th><th class="py-2 text-right">Monto a Pagar</th>';
+
+                let tableHTML = `<table class="w-full text-left text-sm"><thead><tr class="border-b">${headers}</tr></thead><tbody>`;
+                if (alumnos.length === 0) {
+                    tableHTML += `<tr><td colspan="6" class="text-center p-4">No hay alumnos para mostrar.</td></tr>`;
+                } else {
+                    alumnos.forEach((alumno, index) => {
+                        const estado = alumno.estadoCobranza;
+                        const telefono = alumno.telefono || 'N/A';
+                        const estadoClasses = { 'Renovado': 'text-green-600', 'Pendiente': 'text-yellow-600', 'Activo': 'text-yellow-600', 'Retirado': 'text-red-600', 'Pausado': 'text-red-600', 'Egresado': 'text-purple-600' };
+                        let estadoClass = estadoClasses[estado] || (estado.startsWith('Trasladado') ? 'text-blue-600' : '');
+                        
+                        const monto = alumno.ultimoMontoPagado || 0;
+                        const nota = alumno.notaFinal;
+                        let notaHtml = nota === null || typeof nota === 'undefined' ? '<span class="text-gray-400">N/A</span>' : nota;
+                        let notaClass = (nota !== null && typeof nota !== 'undefined') ? (nota >= 11 ? 'text-green-600' : 'text-red-600') : '';
+
+                        tableHTML += `
+                            <tr class="border-b">
+                                <td class="py-2 text-center font-medium text-gray-500">${index + 1}</td>
+                                <td class="py-2">${alumno.nombreCompleto}</td>
+                                <td class="py-2">${telefono}</td>
+                                <td class="py-2 font-semibold ${estadoClass}">${estado}</td>
+                                <td class="py-2 text-center font-bold ${notaClass}">${notaHtml}</td>
+                                <td class="py-2 text-right font-semibold">S/ ${parseFloat(monto).toFixed(2)}</td>
+                            </tr>`;
+                    });
+                }
+                tableHTML += '</tbody></table>';
+                container.innerHTML = tableHTML;
+            }
+
+            async function openConfigModal(aulaId) {
+                const aula = dataCache.aulas.find(a => a.id === aulaId);
+                if (!aula) { showNotification("Error: No se encontró el aula.", 'error'); return; }
+                currentAulaData = aula;
+                currentAlumnosList = getAlumnosParaCobranza(aula, 'En Cobranza');
+                
+                const infoContent = document.getElementById('info-panel-content');
+                let docentesModalHTML = `<p><strong>Docente:</strong> ${currentAulaData.nombreDocente}</p>`;
+                if (currentAulaData.docenteApoyo) docentesModalHTML += `<p><strong>Docente Apoyo:</strong> ${currentAulaData.docenteApoyo}</p>`;
+                
+                infoContent.innerHTML = `
+                    <p><strong>Código de Aula:</strong> ${currentAulaData.codigoAula}</p>
+                    ${docentesModalHTML}
+                    <p><strong>Ciclo Actual:</strong> ${currentAulaData.ciclo}</p>
+                    <p><strong>Fecha de Inicio:</strong> ${safeToDate(currentAulaData.fechaInicio)?.toLocaleDateString('es-ES') || 'N/A'}</p>
+                    <p><strong>Fecha de Fin:</strong> ${safeToDate(currentAulaData.fechaFin)?.toLocaleDateString('es-ES') || 'N/A'}</p>
+                `;
+
+                const alumnosQueContinuan = currentAlumnosList.filter(a => a.estadoCobranza === 'Renovado' || a.estadoCobranza.startsWith('Trasladado'));
+                const infoPanelAlumnos = document.getElementById('info-panel-alumnos');
+                if (alumnosQueContinuan.length === 0) {
+                    infoPanelAlumnos.innerHTML = '<p class="text-gray-500 p-4">No hay alumnos que continúen al siguiente ciclo.</p>';
+                } else {
+                    infoPanelAlumnos.innerHTML = `
+                        <table class="w-full text-xs">
+                            <thead><tr class="border-b"><th class="py-1">#</th><th class="py-1">Alumno</th><th class="py-1">Estado</th></tr></thead>
+                            <tbody>${alumnosQueContinuan.map((a, i) => `<tr class="border-b"><td class="py-1">${i+1}</td><td class="py-1">${a.nombreCompleto}</td><td class="py-1 text-xs">${a.estadoCobranza}</td></tr>`).join('')}</tbody>
+                        </table>
+                    `;
+                }
+
+                document.getElementById('next-cycle-span').textContent = parseInt(currentAulaData.ciclo) + 1;
+                document.getElementById('config-cycle-modal').classList.remove('hidden');
+            }
+
+            async function openNotesModal(aulaId) {
+                const aula = dataCache.aulas.find(a => a.id === aulaId);
+                if (!aula) { showNotification("Error: No se encontró el aula.", 'error'); return; }
+                currentAulaIdForNotes = aulaId;
+                const alumnos = getAlumnosParaCobranza(aula, 'En Cobranza');
+                
+                const notesStudentList = document.getElementById('notes-student-list');
+                notesStudentList.innerHTML = alumnos.map(alumno => {
+                    const notaActual = aula.notas?.[alumno.id] ?? '';
+                    return `
+                        <div class="p-3 bg-gray-50 rounded-md">
+                            <label class="block font-semibold text-sm mb-1">${alumno.nombreCompleto}</label>
+                            <input type="number" data-id="${alumno.id}" min="0" max="20" step="1" placeholder="Nota (0-20)" value="${notaActual}" class="w-full p-2 border rounded">
+                        </div>
+                    `;
+                }).join('');
+                
+                document.getElementById('notes-modal').classList.remove('hidden');
+            }
+
+            document.getElementById('form-avanzar-ciclo').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newStartDate = document.getElementById('new-start-date').value;
+                const newEndDate = document.getElementById('new-end-date').value;
+                if (!newStartDate || !newEndDate) {
+                    showNotification("Por favor, ingresa ambas fechas.", "error");
+                    return;
+                }
+
+                const confirmed = await customConfirm(`¿Seguro que deseas avanzar el aula ${currentAulaData.codigoAula} al siguiente ciclo? Esto archivará la cartera actual y actualizará las fechas del aula.`);
+                if (!confirmed) return;
+
+                try {
+                    const nuevoCiclo = parseInt(currentAulaData.ciclo) + 1;
+                    
+                    await runTransaction(db, async (transaction) => {
+                        const alumnosAfectados = currentAlumnosList.filter(a => a.estadoCobranza !== 'Renovado');
+                        
+                        let trasladosSalientes = [];
+                        for (const alumno of alumnosAfectados) {
+                            const trasladoPendiente = dataCache.trasladosPendientes.find(t => 
+                                t.alumnoId === alumno.id && t.estado === "Pendiente" && t.aulaOrigen === currentAulaData.codigoAula
+                            );
+                            if (trasladoPendiente) {
+                                const aulaDestino = dataCache.aulas.find(a => a.codigoAula === trasladoPendiente.aulaDestino);
+                                if (aulaDestino) {
+                                    const aulaDestinoRef = doc(db, "aulas", aulaDestino.id);
+                                    const aulaDestinoDoc = await transaction.get(aulaDestinoRef);
+                                    trasladosSalientes.push({ alumno, trasladoPendiente, aulaDestino, aulaDestinoRef, aulaDestinoDoc });
+                                }
+                            }
+                        }
+
+                        const fechaFinArchivado = safeToDate(currentAulaData.fechaFin) || new Date();
+                        const historialCarteraRef = doc(collection(db, 'historialCarteras'));
+                        transaction.set(historialCarteraRef, {
+                            aulaId: currentAulaData.id,
+                            datosAula: currentAulaData,
+                            alumnos: currentAlumnosList,
+                            fechaArchivado: Timestamp.now(),
+                            mesArchivado: fechaFinArchivado.getMonth(),
+                            anoArchivado: fechaFinArchivado.getFullYear(),
+                        });
+
+                        const aulaRef = doc(db, "aulas", currentAulaData.id);
+                        transaction.update(aulaRef, {
+                            ciclo: nuevoCiclo,
+                            fechaInicio: Timestamp.fromDate(new Date(newStartDate)),
+                            fechaFin: Timestamp.fromDate(new Date(newEndDate)),
+                            notas: {},
+                            notasRegistradas: false,
+                        });
+
+                        for (const alumno of alumnosAfectados) {
+                            const trasladoProcesado = trasladosSalientes.find(ts => ts.alumno.id === alumno.id);
+                            if (trasladoProcesado) {
+                                const { trasladoPendiente, aulaDestino, aulaDestinoRef, aulaDestinoDoc } = trasladoProcesado;
+                                if (["Programada", "En Curso"].includes(aulaDestino.estado) && aulaDestino.ciclo === trasladoPendiente.cicloDestino) {
+                                    transaction.update(doc(db, "alumnos", alumno.id), { 
+                                        estado: 'Activo', 
+                                        aulaActual: trasladoPendiente.aulaDestino, 
+                                        cicloInscrito: trasladoPendiente.cicloDestino 
+                                    });
+                                    transaction.update(doc(db, "trasladosPendientes", trasladoPendiente.id), { estado: "Completado" });
+                                    
+                                    const historyRef = doc(collection(db, 'historialAlumnos'));
+                                    transaction.set(historyRef, {
+                                        alumnoId: alumno.id,
+                                        nombreAlumno: alumno.nombreCompleto,
+                                        fecha: Timestamp.now(),
+                                        tipoAccion: trasladoPendiente.tipo === 'cobro' ? 'Traslado por Cobro' : 'Traslado Académico',
+                                        descripcion: `Traslado automático completado desde ${trasladoPendiente.aulaOrigen} a ${trasladoPendiente.aulaDestino}.`,
+                                        motivo: 'Procesado automáticamente al avanzar ciclo.',
+                                        usuario: currentUserEmail,
+                                        detalles: {
+                                            aulaDestino: trasladoPendiente.aulaDestino,
+                                            cicloDestino: trasladoPendiente.cicloDestino,
+                                            aulaOrigen: trasladoPendiente.aulaOrigen,
+                                            cicloOrigen: trasladoPendiente.cicloOrigen,
+                                            ...trasladoPendiente.paymentDetails
+                                        }
+                                    });
+                                    
+                                    if(aulaDestinoDoc.exists()) {
+                                        transaction.update(aulaDestinoRef, { cantidadAlumnos: (aulaDestinoDoc.data().cantidadAlumnos || 0) + 1 });
+                                    }
+                                } else {
+                                    transaction.update(doc(db, "alumnos", alumno.id), { aulaActual: 'Sin aula (Fin de ciclo)' });
+                                }
+                            } else {
+                                transaction.update(doc(db, "alumnos", alumno.id), { aulaActual: 'Sin aula (Fin de ciclo)' });
+                            }
+                        }
+                    });
+
+                    await logAction("Avanzar Ciclo", `El aula ${currentAulaData.codigoAula} avanzó al ciclo ${nuevoCiclo}.`);
+                    showNotification("¡El ciclo ha sido avanzado exitosamente!", "success");
+                    document.getElementById('config-cycle-modal').classList.add('hidden');
+                } catch (error) {
+                    console.error("Error al avanzar ciclo: ", error);
+                    showNotification("Error al procesar la operación: " + error.message, "error");
+                }
+            });
+
+            document.getElementById('form-cerrar-aula').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const motivo = document.getElementById('motivo-cierre').value;
+                if (!motivo) {
+                    showNotification("Por favor, selecciona un motivo de cierre.", "error");
+                    return;
+                }
+
+                const confirmed = await customConfirm(`¿Estás SEGURO de que deseas cerrar el aula ${currentAulaData.codigoAula}? Esta acción archivará la cartera y los alumnos quedarán sin aula.`);
+                if (!confirmed) return;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const alumnosAfectados = currentAlumnosList.filter(a => a.estadoCobranza !== 'Renovado');
+                        
+                        let trasladosSalientes = [];
+                        for (const alumno of alumnosAfectados) {
+                            const trasladoPendiente = dataCache.trasladosPendientes.find(t => 
+                                t.alumnoId === alumno.id && t.estado === "Pendiente" && t.aulaOrigen === currentAulaData.codigoAula
+                            );
+                            if (trasladoPendiente) {
+                                const aulaDestino = dataCache.aulas.find(a => a.codigoAula === trasladoPendiente.aulaDestino);
+                                if (aulaDestino) {
+                                    const aulaDestinoRef = doc(db, "aulas", aulaDestino.id);
+                                    const aulaDestinoDoc = await transaction.get(aulaDestinoRef);
+                                    trasladosSalientes.push({ alumno, trasladoPendiente, aulaDestino, aulaDestinoRef, aulaDestinoDoc });
+                                }
+                            }
+                        }
+
+                        const fechaFinArchivado = safeToDate(currentAulaData.fechaFin) || new Date();
+                        const historialCarteraRef = doc(collection(db, 'historialCarteras'));
+                        transaction.set(historialCarteraRef, {
+                            aulaId: currentAulaData.id,
+                            datosAula: {...currentAulaData, estado: 'Cerrada', motivoCierre: motivo},
+                            alumnos: currentAlumnosList,
+                            fechaArchivado: Timestamp.now(),
+                            mesArchivado: fechaFinArchivado.getMonth(),
+                            anoArchivado: fechaFinArchivado.getFullYear(),
+                        });
+                        
+                        const aulaRef = doc(db, "aulas", currentAulaData.id);
+                        transaction.update(aulaRef, { estado: 'Cerrada', motivoCierre: motivo });
+
+                        for (const alumno of alumnosAfectados) {
+                            const trasladoProcesado = trasladosSalientes.find(ts => ts.alumno.id === alumno.id);
+                            if (trasladoProcesado) {
+                                const { trasladoPendiente, aulaDestino, aulaDestinoRef, aulaDestinoDoc } = trasladoProcesado;
+                                if (["Programada", "En Curso"].includes(aulaDestino.estado) && aulaDestino.ciclo === trasladoPendiente.cicloDestino) {
+                                    transaction.update(doc(db, "alumnos", alumno.id), { 
+                                        estado: 'Activo', 
+                                        aulaActual: trasladoPendiente.aulaDestino, 
+                                        cicloInscrito: trasladoPendiente.cicloDestino 
+                                    });
+                                    transaction.update(doc(db, "trasladosPendientes", trasladoPendiente.id), { estado: "Completado" });
+                                    
+                                    const historyRef = doc(collection(db, 'historialAlumnos'));
+                                    transaction.set(historyRef, {
+                                        alumnoId: alumno.id,
+                                        nombreAlumno: alumno.nombreCompleto,
+                                        fecha: Timestamp.now(),
+                                        tipoAccion: trasladoPendiente.tipo === 'cobro' ? 'Traslado por Cobro' : 'Traslado Académico',
+                                        descripcion: `Traslado automático completado desde ${trasladoPendiente.aulaOrigen} a ${trasladoPendiente.aulaDestino}.`,
+                                        motivo: 'Procesado automáticamente al cerrar aula.',
+                                        usuario: currentUserEmail,
+                                        detalles: {
+                                            aulaDestino: trasladoPendiente.aulaDestino,
+                                            cicloDestino: trasladoPendiente.cicloDestino,
+                                            aulaOrigen: trasladoPendiente.aulaOrigen,
+                                            cicloOrigen: trasladoPendiente.cicloOrigen,
+                                            ...trasladoPendiente.paymentDetails
+                                        }
+                                    });
+                                    
+                                    if(aulaDestinoDoc.exists()) {
+                                        transaction.update(aulaDestinoRef, { cantidadAlumnos: (aulaDestinoDoc.data().cantidadAlumnos || 0) + 1 });
+                                    }
+                                } else {
+                                    transaction.update(doc(db, "alumnos", alumno.id), { aulaActual: 'Sin aula (Fin de ciclo)' });
+                                }
+                            } else {
+                                transaction.update(doc(db, "alumnos", alumno.id), { estado: 'Retirado', aulaActual: 'Sin aula (Aula cerrada)' });
+                            }
+                        }
+                     });
+
+                    await logAction("Cierre de Aula", `El aula ${currentAulaData.codigoAula} fue cerrada. Motivo: ${motivo}.`);
+                    showNotification("¡El aula ha sido cerrada y archivada exitosamente!", "success");
+                    document.getElementById('config-cycle-modal').classList.add('hidden');
+                } catch (error) {
+                    console.error("Error al cerrar el aula: ", error);
+                    showNotification("Error al procesar la operación: " + error.message, "error");
+                }
+            });
+            
+            document.getElementById('form-notes').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const inputs = e.target.querySelectorAll('input[type="number"]');
+                const notesToSave = {};
+                let allValid = true;
+                inputs.forEach(input => {
+                    const studentId = input.dataset.id;
+                    const note = input.value.trim() === '' ? null : parseInt(input.value);
+                    if (note !== null && (note < 0 || note > 20)) allValid = false;
+                    notesToSave[studentId] = note;
+                });
+
+                if (!allValid) {
+                    showNotification("Las notas deben estar entre 0 y 20.", "error");
+                    return;
+                }
+
+                try {
+                    const aulaRef = doc(db, "aulas", currentAulaIdForNotes);
+                    await updateDoc(aulaRef, { notas: notesToSave, notasRegistradas: true });
+                    showNotification("Notas guardadas exitosamente.", "success");
+                    document.getElementById('notes-modal').classList.add('hidden');
+                } catch (error) {
+                    showNotification("Error al guardar las notas.", "error");
+                    console.error(error);
+                }
+            });
+
+            // --- Inicialización y Listeners ---
+            const renderTrigger = () => renderCarteraView();
+            onSnapshot(collection(db, "alumnos"), s => { dataCache.alumnos = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
+            onSnapshot(collection(db, "aulas"), s => { dataCache.aulas = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
+            onSnapshot(collection(db, "historialCarteras"), s => { dataCache.historialCarteras = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
+            onSnapshot(collection(db, "historialAlumnos"), s => { dataCache.historialAlumnos = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
+            onSnapshot(collection(db, "trasladosPendientes"), s => { dataCache.trasladosPendientes = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
+            
+            const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const currentMonth = new Date().getMonth();
+            meses.forEach((mes, index) => monthFilter.innerHTML += `<option value="${index}">${mes}</option>`);
+            const currentYear = new Date().getFullYear();
+            for (let i = currentYear - 2; i <= currentYear + 1; i++) yearFilter.innerHTML += `<option value="${i}">${i}</option>`;
+            monthFilter.value = currentMonth;
+            yearFilter.value = currentYear;
+            
+            [monthFilter, yearFilter, viewCarteraBtn].forEach(el => el.addEventListener('change', renderCarteraView));
+            viewCarteraBtn.addEventListener('click', renderCarteraView);
+            
+            aulasContainer.addEventListener('click', e => {
+                const configBtn = e.target.closest('.config-cycle-btn');
+                const notesBtn = e.target.closest('.register-notes-btn');
+                if (configBtn) openConfigModal(configBtn.dataset.aulaId);
+                if (notesBtn) openNotesModal(notesBtn.dataset.aulaId);
+            });
+            document.getElementById('close-config-modal').addEventListener('click', () => document.getElementById('config-cycle-modal').classList.add('hidden'));
+            document.getElementById('close-notes-modal').addEventListener('click', () => document.getElementById('notes-modal').classList.add('hidden'));
+        });
+    </script>
+</body>
+</html>

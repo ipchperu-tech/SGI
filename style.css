@@ -1,0 +1,173 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* --- ESTILOS GLOBALES DEL SGI --- */
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: #f1f5f9; 
+    font-size: 13px;
+}
+.card { 
+    background-color: white; 
+    border-radius: 0.75rem; 
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.btn-primary { 
+    background-color: #c80000; 
+    color: white; 
+    transition: background-color 0.2s; 
+}
+.btn-primary:hover { 
+    background-color: #a20000; 
+}
+.nav-link { 
+    transition: all 0.2s; 
+    border-left: 3px solid transparent; 
+    font-size: 13px;
+}
+.nav-link.active { 
+    border-left-color: #c80000; 
+    background-color: #fee2e2; 
+    color: #c80000; 
+    font-weight: 600; 
+}
+.nav-link:not(.active):hover { 
+    background-color: #f8fafc; 
+}
+.tab-btn, .tab-btn-reg {
+    font-size: 13px;
+    padding: 12px 20px;
+}
+.tab-btn.border-red-500, .tab-btn-reg.border-red-500 {
+    border-color: #c80000;
+}
+.tab-btn.text-red-500, .tab-btn-reg.text-red-500 {
+    color: #c80000;
+}
+input, select {
+    font-size: 13px;
+}
+input:focus, select:focus {
+    border-color: #c80000 !important;
+    box-shadow: 0 0 0 2px rgba(200, 0, 0, 0.2) !important;
+    outline: none;
+}
+.loader { 
+    border: 4px solid #fee2e2; 
+    border-top: 4px solid #c80000; 
+    border-radius: 50%; 
+    width: 24px; 
+    height: 24px; 
+    animation: spin 1s linear infinite; 
+}
+@keyframes spin { 
+    0% { transform: rotate(0deg); } 
+    100% { transform: rotate(360deg); } 
+}
+
+/* --- TAMAÑOS DE TÍTULOS --- */
+h2 { font-size: 24px; }
+h3 { font-size: 16px; }
+
+/* --- ESTILOS DE TABLAS --- */
+th, td {
+    padding: 12px 16px;
+    font-size: 12px;
+}
+
+/* --- ESTILOS PARA V3 --- */
+.danger-btn {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+}
+.danger-btn:hover {
+    background-color: #fecaca;
+    color: #991b1b;
+}
+
+/* --- ESTILOS PARA LA CALCULADORA (RESTAURADOS) --- */
+.calc-section { margin-top: 1.5rem; padding: 1.5rem; background-color: white; border-radius: 6px; }
+.calc-section h3 { font-size: 1rem; color: #34495e; margin-top: 0; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #ecf0f1; }
+.calc-section label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #555; font-size: 0.8rem; }
+.calc-section input[type="date"], 
+.calc-section input[type="number"], 
+.calc-section select { 
+    width: 100%; padding: 0.6rem; font-size: 0.8rem; margin-bottom: 1rem; 
+    border-radius: 4px; border: 1px solid #ced4da; background-color: #fff; 
+    transition: border-color 0.2s ease, box-shadow 0.2s ease; 
+}
+.calc-section .form-actions { margin-top: 1rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.calc-section button { padding: 0.6rem 1.2rem; font-size: 0.8rem; font-weight: 500; border: none; border-radius: 4px; cursor: pointer; color: #fff; transition: background-color 0.2s ease; flex-grow: 1; min-width: 110px; }
+.calc-section .calc-btn-primary { background-color: #c80000; } 
+.calc-section .calc-btn-primary:hover { background-color: #a20000; }
+.calc-section .calc-btn-secondary { background-color: #6c757d; flex-grow: 0; } 
+.calc-section .calc-btn-secondary:hover { background-color: #5a6268; }
+.calc-section .feedback-message { padding: 0.75rem 1rem; margin-top: 1rem; border-radius: 4px; font-size: 0.8em; border: 1px solid transparent; display: none; }
+.calc-section .feedback-message.success { background-color: #d1e7dd; border-color: #badbcc; color: #0f5132; }
+.calc-section .feedback-message.error { background-color: #f8d7da; border-color: #f5c2c7; color: #842029; }
+.calc-section .result-box { 
+    white-space: pre-wrap; 
+    font-family: monospace; 
+    max-height: 350px; 
+    overflow-y: auto; 
+    background-color: #f8fafc; 
+    padding: 1rem; 
+    border: 1px solid #e9ecef; 
+    border-radius: 4px; 
+    font-size: 12px;
+    color: #495057; 
+    min-height: 50px; 
+}
+.calc-section .result-box:empty::before { content: "Aquí aparecerán los resultados..."; color: #999; font-style: italic; }
+.calc-section .copy-btn-inline {
+    background: none; border: none; color: #c80000; 
+    font-size: 12px;
+    font-weight: 600; cursor: pointer; padding: 0;
+    transition: color 0.2s;
+}
+.calc-section .copy-btn-inline:hover { color: #a20000; }
+.calc-section .copy-btn-inline.copied { color: #10b981; }
+.calc-section .hidden-field { display: none; }
+
+/* * NUEVOS ESTILOS PARA MEJORAS * */
+.logo-spin {
+    animation: logo-spin-animation 2s linear infinite;
+}
+
+@keyframes logo-spin-animation {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#preloader {
+    transition: opacity 0.5s ease-in-out;
+}
+
+/* --- ESTILOS PARA INHABILITAR VISTA MÓVIL (SOLO SGI) --- */
+#mobile-notice {
+    display: none; /* Oculto por defecto en escritorio */
+}
+
+@media (max-width: 767px) {
+    /* Ocultamos la aplicación principal del SGI en móviles */
+    .sgi-main-page #app-container, 
+    .sgi-main-page #login-screen, 
+    .sgi-main-page #preloader {
+        display: none !important;
+    }
+
+    /* Mostramos el mensaje de aviso solo en la página principal del SGI */
+    .sgi-main-page #mobile-notice {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background-color: #f1f5f9;
+    }
+}
+

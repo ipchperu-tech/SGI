@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Pagos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-6 md:p-10">
+
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Control de Pagos y Transacciones</h2>
+    
+    <div class="card p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <input type="text" id="search-input" placeholder="Buscar por nombre de alumno..." class="w-full p-2 border rounded-md md:col-span-2">
+            <select id="accion-filter" class="w-full p-2 border rounded-md">
+                <option value="">Todas las Acciones</option>
+                <option value="Inscripción">Inscripción</option>
+                <option value="Renovación">Renovación</option>
+                <option value="Traslado por Cobro">Traslado por Cobro</option>
+                <option value="Reincorporación">Reincorporación</option>
+                <option value="Reembolso">Reembolso</option>
+            </select>
+            <select id="curso-filter" class="w-full p-2 border rounded-md">
+                <option value="">Todos los Cursos</option>
+                <option value="Chino General">Chino General</option>
+                <option value="Chino para Niños">Chino para Niños</option>
+                <option value="Chino Privado">Chino Privado</option>
+                <option value="Chino Corporativo">Chino Corporativo</option>
+                <option value="Importaciones Corto">Importaciones Corto</option>
+                <option value="Importaciones Largo">Importaciones Largo</option>
+                <option value="Español">Español</option>
+            </select>
+            <select id="month-filter" class="w-full p-2 border rounded-md">
+                <option value="">Todos los Meses</option>
+            </select>
+            <select id="year-filter" class="w-full p-2 border rounded-md">
+                <option value="">Todos los Años</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="card overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="p-4">Fecha Acción</th>
+                    <th class="p-4">Alumno</th>
+                    <th class="p-4">Tipo de Acción</th>
+                    <th class="p-4">Medio de Pago</th>
+                    <th class="p-4">N° Operación</th>
+                    <th class="p-4">Doc. Pago</th>
+                    <th class="p-4 text-right">Monto (S/.)</th>
+                    <th class="p-4">Usuario</th>
+                    <th class="p-4">Detalles</th>
+                </tr>
+            </thead>
+            <tbody id="pagos-table-body">
+                <tr><td colspan="9" class="text-center p-10"><div class="loader inline-block"></div></td></tr>
+            </tbody>
+            <tfoot class="bg-gray-50 font-bold">
+                <tr>
+                    <td colspan="6" class="p-4 text-right">Total Filtrado:</td>
+                    <td id="total-monto" class="p-4 text-right text-lg text-green-600">S/ 0.00</td>
+                    <td colspan="2" class="p-4"></td>
+                </tr>
+            </tfoot>
+        </table>
+        <div id="pagination-controls" class="p-4 flex justify-between items-center border-t">
+            <!-- Los controles de paginación se insertarán aquí -->
+        </div>
+    </div>
+
+    <!-- Modal para ver detalles de pago -->
+    <div id="payment-details-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="card p-6 rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Detalles del Pago</h3>
+                <button id="close-details-modal" class="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+            </div>
+            <div id="payment-details-content" class="space-y-2 text-sm"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
+          authDomain: "bdv3-ipch.firebaseapp.com",
+          projectId: "bdv3-ipch",
+          storageBucket: "bdv3-ipch.firebasestorage.app",
+          messagingSenderId: "993842726107",
+          appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const tbody = document.getElementById('pagos-table-body');
+            const searchInput = document.getElementById('search-input');
+            const accionFilter = document.getElementById('accion-filter');
+            const cursoFilter = document.getElementById('curso-filter');
+            const monthFilter = document.getElementById('month-filter');
+            const yearFilter = document.getElementById('year-filter');
+            const totalMontoEl = document.getElementById('total-monto');
+            const detailsModal = document.getElementById('payment-details-modal');
+            const detailsContent = document.getElementById('payment-details-content');
+            const closeDetailsModalBtn = document.getElementById('close-details-modal');
+            const paginationControls = document.getElementById('pagination-controls');
+
+            let dataCache = [];
+            let currentPage = 1;
+            const ITEMS_PER_PAGE = 20;
+
+            const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            meses.forEach((mes, index) => monthFilter.innerHTML += `<option value="${index}">${mes}</option>`);
+            const currentYear = new Date().getFullYear();
+            for (let i = currentYear; i >= currentYear - 3; i--) yearFilter.innerHTML += `<option value="${i}">${i}</option>`;
+            monthFilter.value = new Date().getMonth();
+            yearFilter.value = currentYear;
+
+            function renderView() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const accion = accionFilter.value;
+                const curso = cursoFilter.value;
+                const month = monthFilter.value;
+                const year = yearFilter.value;
+
+                let filteredData = dataCache.filter(item => {
+                    const dateString = item.detalles?.fechaPago;
+                    if (!dateString) return true; // Mantener registros sin fecha de pago en la vista general
+                    
+                    const itemDate = new Date(dateString + 'T00:00:00');
+                    const cursoItem = item.detalles?.curso || '';
+                    
+                    const nameMatch = !searchTerm || item.nombreAlumno.toLowerCase().includes(searchTerm);
+                    const accionMatch = !accion || item.tipoAccion === accion;
+                    const cursoMatch = !curso || cursoItem.includes(curso);
+                    const monthMatch = month === "" || itemDate.getMonth() == month;
+                    const yearMatch = year === "" || itemDate.getFullYear() == year;
+
+                    return nameMatch && accionMatch && cursoMatch && monthMatch && yearMatch;
+                });
+
+                // Lógica de paginación
+                const totalFiltrado = filteredData.reduce((sum, item) => sum + parseFloat(item.detalles?.montoPagado || 0), 0);
+                const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+                if (currentPage > totalPages) currentPage = totalPages > 0 ? totalPages : 1;
+                
+                const start = (currentPage - 1) * ITEMS_PER_PAGE;
+                const end = start + ITEMS_PER_PAGE;
+                const pageData = filteredData.slice(start, end);
+
+                renderTable(pageData, filteredData, totalFiltrado);
+                updatePaginationControls(totalPages, filteredData.length);
+            }
+
+            function renderTable(pageData, fullFilteredData, totalFiltrado) {
+                tbody.innerHTML = '';
+                if (pageData.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="text-center p-6 text-gray-500">No se encontraron transacciones con los filtros seleccionados.</td></tr>`;
+                    totalMontoEl.textContent = 'S/ 0.00';
+                    return;
+                }
+
+                pageData.forEach((item) => {
+                    const row = document.createElement('tr');
+                    const isReembolso = item.tipoAccion === 'Reembolso';
+                    row.className = `border-b hover:bg-gray-50 ${isReembolso ? 'bg-red-50' : ''}`;
+                    
+                    const fecha = item.fecha.toDate().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const monto = parseFloat(item.detalles?.montoPagado || 0);
+
+                    const tipoDoc = item.detalles?.tipoDocumentoPago || 'Boleta';
+                    const numDoc = item.detalles?.numeroDocumentoPago || 'N/A';
+                    const docPagoHtml = isReembolso ? 'N/A' : `${tipoDoc} <br> <span class="text-gray-500">${numDoc}</span>`;
+                    const montoClass = isReembolso ? 'text-red-600' : '';
+                    
+                    // Guardamos el índice del item en el array filtrado completo
+                    const itemIndex = fullFilteredData.indexOf(item);
+
+                    row.innerHTML = `
+                        <td class="p-4">${fecha}</td>
+                        <td class="p-4">${item.nombreAlumno}</td>
+                        <td class="p-4 font-medium ${montoClass}">${item.tipoAccion}</td>
+                        <td class="p-4">${item.detalles?.medioDePago || 'N/A'}</td>
+                        <td class="p-4">${item.detalles?.numeroOperacion || 'N/A'}</td>
+                        <td class="p-4">${docPagoHtml}</td>
+                        <td class="p-4 text-right font-semibold ${montoClass}">S/ ${monto.toFixed(2)}</td>
+                        <td class="p-4 text-gray-500 text-xs">${item.usuario}</td>
+                        <td class="p-4"><button data-item-index="${itemIndex}" class="view-details-btn text-blue-600 hover:underline text-sm">Ver Detalles</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                totalMontoEl.textContent = `S/ ${totalFiltrado.toFixed(2)}`;
+                totalMontoEl.className = `p-4 text-right text-lg font-bold ${totalFiltrado >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            }
+            
+            function updatePaginationControls(totalPages, totalItems) {
+                paginationControls.innerHTML = '';
+                if (totalPages <= 1) return;
+
+                const prevDisabled = currentPage === 1;
+                const nextDisabled = currentPage === totalPages;
+
+                paginationControls.innerHTML = `
+                    <button id="prev-page-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" ${prevDisabled ? 'disabled' : ''}>Anterior</button>
+                    <span class="text-sm text-gray-600">Página ${currentPage} de ${totalPages} (${totalItems} registros)</span>
+                    <button id="next-page-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" ${nextDisabled ? 'disabled' : ''}>Siguiente</button>
+                `;
+
+                document.getElementById('prev-page-btn').addEventListener('click', () => {
+                    if (currentPage > 1) { currentPage--; renderView(); }
+                });
+                document.getElementById('next-page-btn').addEventListener('click', () => {
+                    if (currentPage < totalPages) { currentPage++; renderView(); }
+                });
+            }
+
+            const q = query(
+                collection(db, "historialAlumnos"), 
+                where("tipoAccion", "in", ["Inscripción", "Renovación", "Traslado por Cobro", "Reincorporación", "Reembolso"])
+            );
+
+            onSnapshot(q, (snapshot) => {
+                dataCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                dataCache.sort((a, b) => b.fecha.toMillis() - a.fecha.toMillis());
+                renderView();
+            });
+
+            [searchInput, accionFilter, cursoFilter, monthFilter, yearFilter].forEach(el => {
+                el.addEventListener('input', () => { currentPage = 1; renderView(); });
+                el.addEventListener('change', () => { currentPage = 1; renderView(); });
+            });
+            
+            closeDetailsModalBtn.addEventListener('click', () => detailsModal.classList.add('hidden'));
+
+            tbody.addEventListener('click', (e) => {
+                if (e.target.classList.contains('view-details-btn')) {
+                    const itemIndex = parseInt(e.target.dataset.itemIndex, 10);
+
+                    // Re-filtrar para obtener el array actual y encontrar el item
+                    const searchTerm = searchInput.value.toLowerCase();
+                    const accion = accionFilter.value;
+                    const curso = cursoFilter.value;
+                    const month = monthFilter.value;
+                    const year = yearFilter.value;
+
+                    let filteredData = dataCache.filter(item => {
+                        const dateString = item.detalles?.fechaPago;
+                        if (!dateString) return true;
+                        const itemDate = new Date(dateString + 'T00:00:00');
+                        const cursoItem = item.detalles?.curso || '';
+                        return (!searchTerm || item.nombreAlumno.toLowerCase().includes(searchTerm)) &&
+                               (!accion || item.tipoAccion === accion) &&
+                               (!curso || cursoItem.includes(curso)) &&
+                               (month === "" || itemDate.getMonth() == month) &&
+                               (year === "" || itemDate.getFullYear() == year);
+                    });
+                    
+                    const item = filteredData[itemIndex];
+                    
+                    if (item) {
+                        const d = item.detalles;
+                        const isReembolso = item.tipoAccion === 'Reembolso';
+                        let detailsHtml = `
+                            <p><strong>Alumno:</strong> ${item.nombreAlumno}</p>
+                            <p><strong>Acción:</strong> ${item.tipoAccion}</p>
+                            <hr class="my-2">
+                            <p><strong>Monto:</strong> S/ ${parseFloat(d.montoPagado || 0).toFixed(2)}</p>
+                            <p><strong>Medio de ${isReembolso ? 'Reembolso' : 'Pago'}:</strong> ${d.medioDePago || 'N/A'}</p>
+                            <p><strong>N° Operación:</strong> ${d.numeroOperacion || 'N/A'}</p>
+                        `;
+
+                        if (!isReembolso) {
+                            detailsHtml += `
+                                <p><strong>Banco:</strong> ${d.banco || 'N/A'}</p>
+                                <p><strong>Fecha de Pago:</strong> ${d.fechaPago || 'N/A'}</p>
+                                <p><strong>Hora de Pago:</strong> ${d.horaPago || 'N/A'}</p>
+                                <p><strong>Tipo Documento:</strong> ${d.tipoDocumentoPago || 'Boleta'}</p>
+                                <p><strong>N° Documento:</strong> ${d.numeroDocumentoPago || 'N/A'}</p>
+                            `;
+                        }
+                        
+                        detailsHtml += `
+                            <hr class="my-2">
+                            <p><strong>Curso/Aula:</strong> ${d.curso || d.aula || 'N/A'}</p>
+                            <p><strong>Ciclo:</strong> ${d.ciclo || 'N/A'}</p>
+                            <p class="mt-4 text-xs text-gray-500">Registrado por: ${item.usuario} el ${item.fecha.toDate().toLocaleString('es-ES')}</p>
+                        `;
+                        detailsContent.innerHTML = detailsHtml;
+                        detailsModal.classList.remove('hidden');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
