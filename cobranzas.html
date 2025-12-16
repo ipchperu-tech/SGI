@@ -23,7 +23,7 @@
     <div id="aulas-container" class="space-y-6">
         <div class="card p-8 text-center text-gray-500">
             <div class="loader inline-block"></div>
-            <h3 class="font-bold text-lg mt-4">Cargando datos en tiempo real...</h3>
+            <h3 class="font-bold text-lg mt-4">Cargando datos...</h3>
         </div>
     </div>
 
@@ -45,7 +45,6 @@
             </div>
         </div>
     </div>
-
 
     <!-- Modal para Configurar Siguiente Ciclo -->
     <div id="config-cycle-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
@@ -102,21 +101,12 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, query, where, Timestamp, getDocs, doc, runTransaction, addDoc, writeBatch, getDoc, orderBy, limit, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { db } from "./js/firebase-config.js";
+        import { collection, onSnapshot, query, where, Timestamp, getDocs, doc, runTransaction, addDoc, writeBatch, getDoc, orderBy, limit, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { safeToDate, showNotification, customConfirm, getQueryParam, logAction } from "./js/utils.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
-            authDomain: "bdv3-ipch.firebaseapp.com",
-            projectId: "bdv3-ipch",
-            storageBucket: "bdv3-ipch.firebasestorage.app",
-            messagingSenderId: "993842726107",
-            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
-        };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const currentUserEmail = getQueryParam('user') || 'sistema@sgi.com';
 
-        // --- Cachés de datos en tiempo real ---
         let dataCache = {
             alumnos: [],
             aulas: [],
@@ -125,49 +115,8 @@
             trasladosPendientes: []
         };
         let currentAulaIdForNotes = null;
+        let historialCarterasUnsubscribe = null;
 
-        // --- Ayudantes de Comunicación ---
-        function showNotification(message, type = 'success', duration = 5000) {
-            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
-        }
-        function customConfirm(message) {
-            return new Promise((resolve) => {
-                const confirmId = Math.random().toString(36).substring(2, 15);
-                const listener = (event) => {
-                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
-                        window.removeEventListener('message', listener);
-                        resolve(event.data.result);
-                    }
-                };
-                window.addEventListener('message', listener);
-                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
-            });
-        }
-        
-        const currentUserEmail = new URLSearchParams(window.location.search).get('user') || 'sistema@sgi.com';
-
-        async function logAction(action, description) {
-            try {
-                await addDoc(collection(db, 'historialCambios'), {
-                    fecha: Timestamp.now(), 
-                    usuario: currentUserEmail, 
-                    action: action, 
-                    description: description
-                });
-            } catch (error) { console.error("Error logging action:", error); }
-        }
-
-        function safeToDate(firestoreTimestamp) {
-            if (!firestoreTimestamp) return null;
-            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
-            if (typeof firestoreTimestamp === 'string') {
-                const date = new Date(firestoreTimestamp);
-                if (!isNaN(date)) return date;
-            }
-            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
-            return null;
-        }
-        
         document.addEventListener('DOMContentLoaded', () => {
             const monthFilter = document.getElementById('month-filter');
             const yearFilter = document.getElementById('year-filter');
@@ -260,6 +209,7 @@
                     const fechaFin = safeToDate(aula.fechaFin);
                     return fechaFin && fechaFin.getMonth() === selectedMonth && fechaFin.getFullYear() === selectedYear;
                 });
+
                 const historyAulas = dataCache.historialCarteras.filter(hc => 
                     hc.mesArchivado === selectedMonth && hc.anoArchivado === selectedYear
                 ).map(hc => ({ 
@@ -269,7 +219,14 @@
                     alumnosHistoricos: hc.alumnos 
                 }));
                 
-                let allAulas = [...historyAulas, ...liveAulas.filter(liveAula => !historyAulas.find(h => h.id === liveAula.id))];
+                let allAulas = [...historyAulas];
+                
+                liveAulas.forEach(liveAula => {
+                    if (!allAulas.some(h => h.id === liveAula.id)) {
+                        allAulas.push(liveAula);
+                    }
+                });
+
                 allAulas.sort((a, b) => (safeToDate(a.fechaFin) || 0) - (safeToDate(b.fechaFin) || 0));
                 
                 aulasContainer.innerHTML = '';
@@ -302,9 +259,6 @@
                 });
             }
 
-            // ========================================================================
-            // FUNCIÓN CORREGIDA: Se incluyen todas las acciones de ingreso posibles
-            // ========================================================================
             function getAlumnosParaCobranza(aula, dynamicEstado) {
                 if (aula.isHistory) {
                     return aula.alumnosHistoricos.map(alumno => ({
@@ -317,23 +271,18 @@
                 
                 if (dynamicEstado === 'Programada' || dynamicEstado === 'En Curso') {
                     alumnosEnAula = dataCache.alumnos.filter(a => a.aulaActual === aula.codigoAula && a.estado === 'Activo');
-                
                 } else { 
-                    // 1. Encontrar candidatos
                     const studentIdsInCycle = new Set(
                         dataCache.historialAlumnos
                             .filter(h => {
                                 const matchesStandardFormat = h.detalles?.aula === aula.codigoAula && h.detalles?.ciclo === aula.ciclo;
                                 const matchesTransferFormat = h.detalles?.aulaDestino === aula.codigoAula && h.detalles?.cicloDestino === aula.ciclo;
-                                
-                                // CORRECCIÓN: Se agregaron "Renovación" y "Traslado por Cobro"
                                 return (matchesStandardFormat || matchesTransferFormat) && 
                                        ["Inscripción", "Reincorporación", "Traslado Académico", "Renovación", "Traslado por Cobro"].includes(h.tipoAccion);
                             })
                             .map(h => h.alumnoId)
                     );
                     
-                    // 2. Añadir actuales (con validación de ciclo)
                     dataCache.alumnos.forEach(a => {
                         if (a.aulaActual === aula.codigoAula && parseInt(a.cicloInscrito) === parseInt(aula.ciclo)) {
                             studentIdsInCycle.add(a.id);
@@ -342,39 +291,40 @@
 
                     const fechaFinAula = safeToDate(aula.fechaFin);
                     
-                    // 3. Filtrar alumnos
                     alumnosEnAula = dataCache.alumnos.filter(alumno => {
+                        // REGLA 1 (NUEVA): Prioridad al estado actual. Si está ACTIVO en esta aula, debe aparecer.
+                        if (alumno.estado === 'Activo' && alumno.aulaActual === aula.codigoAula) return true;
+
                         if (!studentIdsInCycle.has(alumno.id)) return false;
                         
-                        // --- FILTRO ANTI-FANTASMAS ---
                         if (alumno.estado === 'Activo' && alumno.aulaActual && alumno.aulaActual !== aula.codigoAula) {
                             const esTrasladoPendiente = dataCache.trasladosPendientes.some(t => 
                                 t.alumnoId === alumno.id && 
                                 t.aulaOrigen === aula.codigoAula && 
                                 t.estado === 'Pendiente'
                             );
-                            if (!esTrasladoPendiente) {
-                                return false; 
-                            }
+                            if (!esTrasladoPendiente) return false; 
                         }
 
                         const accionDeSalida = dataCache.historialAlumnos.find(h => {
-                            if (h.alumnoId !== alumno.id || !["Retirado", "Pausado", "Traslado Académico"].includes(h.tipoAccion)) {
-                                return false;
-                            }
+                            if (h.alumnoId !== alumno.id || !["Retirado", "Pausado", "Traslado Académico"].includes(h.tipoAccion)) return false;
                             const isNewFormat = h.detalles?.aulaOrigen === aula.codigoAula && h.detalles?.cicloOrigen === aula.ciclo;
                             const isOldFormat = h.detalles?.aula === aula.codigoAula && h.detalles?.ciclo === aula.ciclo;
                             return isNewFormat || isOldFormat;
                         });
 
                         if (accionDeSalida) {
+                            // Validar reincorporación posterior
+                            const reincorporacionPosterior = dataCache.historialAlumnos.some(h => 
+                                h.alumnoId === alumno.id && 
+                                h.tipoAccion === "Reincorporación" && 
+                                h.fecha.toMillis() > accionDeSalida.fecha.toMillis()
+                            );
+                            if (reincorporacionPosterior) return true;
+
                             if (fechaFinAula) {
-                                const fechaAccion = accionDeSalida.fecha?.toDate 
-                                    ? accionDeSalida.fecha.toDate() 
-                                    : new Date(accionDeSalida.fecha);
-                                if (fechaAccion < fechaFinAula) {
-                                    return false;
-                                }
+                                const fechaAccion = safeToDate(accionDeSalida.fecha);
+                                if (fechaAccion < fechaFinAula) return false;
                             } else {
                                 return false;
                             }
@@ -386,12 +336,11 @@
                 const cicloSiguiente = parseInt(aula.ciclo) + 1;
                 return alumnosEnAula.map(alumno => {
                     let estadoCobranza; 
-
                     const renovado = dataCache.historialAlumnos.some(h => 
                         h.alumnoId === alumno.id && 
                         h.tipoAccion === "Renovación" && 
                         h.detalles?.aula === aula.codigoAula && 
-                        h.detalles?.ciclo === cicloSiguiente
+                        parseInt(h.detalles?.ciclo) === cicloSiguiente
                     );
                     
                     if (renovado) {
@@ -489,7 +438,8 @@
                     `;
                 }
 
-                document.getElementById('next-cycle-span').textContent = parseInt(currentAulaData.ciclo) + 1;
+                const nextCycle = parseInt(currentAulaData.ciclo, 10) + 1;
+                document.getElementById('next-cycle-span').textContent = nextCycle;
                 document.getElementById('config-cycle-modal').classList.remove('hidden');
             }
 
@@ -522,19 +472,20 @@
                     return;
                 }
 
-                const confirmed = await customConfirm(`¿Seguro que deseas avanzar el aula ${currentAulaData.codigoAula} al siguiente ciclo? Esto archivará la cartera actual y actualizará las fechas del aula.`);
+                const confirmed = await customConfirm(`¿Seguro que deseas avanzar el aula ${currentAulaData.codigoAula} al siguiente ciclo?`);
                 if (!confirmed) return;
 
                 try {
-                    const nuevoCiclo = parseInt(currentAulaData.ciclo) + 1;
+                    const nuevoCiclo = Number(parseInt(currentAulaData.ciclo, 10) + 1);
                     
                     await runTransaction(db, async (transaction) => {
                         const alumnosAfectados = currentAlumnosList.filter(a => a.estadoCobranza !== 'Renovado');
                         
                         let trasladosSalientes = [];
                         for (const alumno of alumnosAfectados) {
+                            // FIX: Buscamos traslado pendiente usando ID del alumno, sin restringir por aulaOrigen (para mayor robustez si hubo cambios manuales)
                             const trasladoPendiente = dataCache.trasladosPendientes.find(t => 
-                                t.alumnoId === alumno.id && t.estado === "Pendiente" && t.aulaOrigen === currentAulaData.codigoAula
+                                t.alumnoId === alumno.id && t.estado === "Pendiente"
                             );
                             if (trasladoPendiente) {
                                 const aulaDestino = dataCache.aulas.find(a => a.codigoAula === trasladoPendiente.aulaDestino);
@@ -542,26 +493,34 @@
                                     const aulaDestinoRef = doc(db, "aulas", aulaDestino.id);
                                     const aulaDestinoDoc = await transaction.get(aulaDestinoRef);
                                     trasladosSalientes.push({ alumno, trasladoPendiente, aulaDestino, aulaDestinoRef, aulaDestinoDoc });
+                                } else {
+                                    // Caso: Aula destino no existe, pero hay que cerrar el ticket
+                                    trasladosSalientes.push({ alumno, trasladoPendiente, aulaDestino: null });
                                 }
                             }
                         }
 
-                        const fechaFinArchivado = safeToDate(currentAulaData.fechaFin) || new Date();
+                        let fechaFinObj = safeToDate(currentAulaData.fechaFin);
+                        if (!fechaFinObj) fechaFinObj = new Date();
+                        const fechaFinSegura = new Date(fechaFinObj.getTime() + (12 * 60 * 60 * 1000));
+                        const mesArchivadoSeguro = fechaFinSegura.getMonth(); 
+                        const anoArchivadoSeguro = fechaFinSegura.getFullYear();
+
                         const historialCarteraRef = doc(collection(db, 'historialCarteras'));
                         transaction.set(historialCarteraRef, {
                             aulaId: currentAulaData.id,
                             datosAula: currentAulaData,
                             alumnos: currentAlumnosList,
                             fechaArchivado: Timestamp.now(),
-                            mesArchivado: fechaFinArchivado.getMonth(),
-                            anoArchivado: fechaFinArchivado.getFullYear(),
+                            mesArchivado: mesArchivadoSeguro,
+                            anoArchivado: anoArchivadoSeguro,
                         });
 
                         const aulaRef = doc(db, "aulas", currentAulaData.id);
                         transaction.update(aulaRef, {
                             ciclo: nuevoCiclo,
-                            fechaInicio: Timestamp.fromDate(new Date(newStartDate)),
-                            fechaFin: Timestamp.fromDate(new Date(newEndDate)),
+                            fechaInicio: Timestamp.fromDate(new Date(newStartDate + 'T00:00:00')), 
+                            fechaFin: Timestamp.fromDate(new Date(newEndDate + 'T00:00:00')),
                             notas: {},
                             notasRegistradas: false,
                         });
@@ -570,7 +529,9 @@
                             const trasladoProcesado = trasladosSalientes.find(ts => ts.alumno.id === alumno.id);
                             if (trasladoProcesado) {
                                 const { trasladoPendiente, aulaDestino, aulaDestinoRef, aulaDestinoDoc } = trasladoProcesado;
-                                if (["Programada", "En Curso"].includes(aulaDestino.estado) && aulaDestino.ciclo === trasladoPendiente.cicloDestino) {
+                                
+                                // FIX: Validación de existencia de aulaDestino y estado correcto
+                                if (aulaDestino && ["Programada", "En Curso"].includes(aulaDestino.estado) && parseInt(aulaDestino.ciclo) === parseInt(trasladoPendiente.cicloDestino)) {
                                     transaction.update(doc(db, "alumnos", alumno.id), { 
                                         estado: 'Activo', 
                                         aulaActual: trasladoPendiente.aulaDestino, 
@@ -600,7 +561,20 @@
                                         transaction.update(aulaDestinoRef, { cantidadAlumnos: (aulaDestinoDoc.data().cantidadAlumnos || 0) + 1 });
                                     }
                                 } else {
-                                    transaction.update(doc(db, "alumnos", alumno.id), { aulaActual: 'Sin aula (Fin de ciclo)' });
+                                    // Caso FALLIDO: El aula destino no está lista o no coincide
+                                    // 1. Dejar al alumno sin aula para que no se pierda en el limbo
+                                    transaction.update(doc(db, "alumnos", alumno.id), { aulaActual: 'Sin aula (Fin de ciclo - Traslado Fallido)' });
+                                    
+                                    // 2. Cerrar el ticket pero con una observación clara del error
+                                    let motivoFallo = "Aula destino no encontrada o no disponible.";
+                                    if (aulaDestino && parseInt(aulaDestino.ciclo) !== parseInt(trasladoPendiente.cicloDestino)) {
+                                        motivoFallo = `Ciclo del aula destino (${aulaDestino.ciclo}) no coincide con el traslado (${trasladoPendiente.cicloDestino}).`;
+                                    }
+
+                                    transaction.update(doc(db, "trasladosPendientes", trasladoPendiente.id), { 
+                                        estado: "Completado", // Lo marcamos completado para sacarlo de la lista de pendientes
+                                        observacion: `ERROR AUTOMÁTICO: ${motivoFallo} El alumno quedó sin aula.`
+                                    });
                                 }
                             } else {
                                 transaction.update(doc(db, "alumnos", alumno.id), { aulaActual: 'Sin aula (Fin de ciclo)' });
@@ -625,7 +599,7 @@
                     return;
                 }
 
-                const confirmed = await customConfirm(`¿Estás SEGURO de que deseas cerrar el aula ${currentAulaData.codigoAula}? Esta acción archivará la cartera y los alumnos quedarán sin aula.`);
+                const confirmed = await customConfirm(`¿Estás SEGURO de que deseas cerrar el aula ${currentAulaData.codigoAula}?`);
                 if (!confirmed) return;
 
                 try {
@@ -634,8 +608,9 @@
                         
                         let trasladosSalientes = [];
                         for (const alumno of alumnosAfectados) {
+                             // FIX: Búsqueda robusta de traslado pendiente
                             const trasladoPendiente = dataCache.trasladosPendientes.find(t => 
-                                t.alumnoId === alumno.id && t.estado === "Pendiente" && t.aulaOrigen === currentAulaData.codigoAula
+                                t.alumnoId === alumno.id && t.estado === "Pendiente"
                             );
                             if (trasladoPendiente) {
                                 const aulaDestino = dataCache.aulas.find(a => a.codigoAula === trasladoPendiente.aulaDestino);
@@ -643,19 +618,24 @@
                                     const aulaDestinoRef = doc(db, "aulas", aulaDestino.id);
                                     const aulaDestinoDoc = await transaction.get(aulaDestinoRef);
                                     trasladosSalientes.push({ alumno, trasladoPendiente, aulaDestino, aulaDestinoRef, aulaDestinoDoc });
+                                } else {
+                                    trasladosSalientes.push({ alumno, trasladoPendiente, aulaDestino: null });
                                 }
                             }
                         }
 
-                        const fechaFinArchivado = safeToDate(currentAulaData.fechaFin) || new Date();
+                        let fechaFinObj = safeToDate(currentAulaData.fechaFin);
+                        if (!fechaFinObj) fechaFinObj = new Date();
+                        const fechaFinSegura = new Date(fechaFinObj.getTime() + (12 * 60 * 60 * 1000));
+                        
                         const historialCarteraRef = doc(collection(db, 'historialCarteras'));
                         transaction.set(historialCarteraRef, {
                             aulaId: currentAulaData.id,
                             datosAula: {...currentAulaData, estado: 'Cerrada', motivoCierre: motivo},
                             alumnos: currentAlumnosList,
                             fechaArchivado: Timestamp.now(),
-                            mesArchivado: fechaFinArchivado.getMonth(),
-                            anoArchivado: fechaFinArchivado.getFullYear(),
+                            mesArchivado: fechaFinSegura.getMonth(),
+                            anoArchivado: fechaFinSegura.getFullYear(),
                         });
                         
                         const aulaRef = doc(db, "aulas", currentAulaData.id);
@@ -665,7 +645,8 @@
                             const trasladoProcesado = trasladosSalientes.find(ts => ts.alumno.id === alumno.id);
                             if (trasladoProcesado) {
                                 const { trasladoPendiente, aulaDestino, aulaDestinoRef, aulaDestinoDoc } = trasladoProcesado;
-                                if (["Programada", "En Curso"].includes(aulaDestino.estado) && aulaDestino.ciclo === trasladoPendiente.cicloDestino) {
+                                
+                                if (aulaDestino && ["Programada", "En Curso"].includes(aulaDestino.estado) && parseInt(aulaDestino.ciclo) === parseInt(trasladoPendiente.cicloDestino)) {
                                     transaction.update(doc(db, "alumnos", alumno.id), { 
                                         estado: 'Activo', 
                                         aulaActual: trasladoPendiente.aulaDestino, 
@@ -696,6 +677,11 @@
                                     }
                                 } else {
                                     transaction.update(doc(db, "alumnos", alumno.id), { aulaActual: 'Sin aula (Fin de ciclo)' });
+                                    // FIX CRÍTICO: Cierre garantizado
+                                    transaction.update(doc(db, "trasladosPendientes", trasladoPendiente.id), { 
+                                        estado: "Completado",
+                                        observacion: "Traslado no ejecutado por cierre de aula y falta de destino válido."
+                                    });
                                 }
                             } else {
                                 transaction.update(doc(db, "alumnos", alumno.id), { estado: 'Retirado', aulaActual: 'Sin aula (Aula cerrada)' });
@@ -740,23 +726,39 @@
                 }
             });
 
+            function loadHistoryForYear(year) {
+                if (historialCarterasUnsubscribe) historialCarterasUnsubscribe();
+                showNotification(`Cargando historial de ${year}...`, 'info');
+                
+                const q = query(collection(db, "historialCarteras"), where("anoArchivado", "==", year));
+                historialCarterasUnsubscribe = onSnapshot(q, (snapshot) => {
+                    dataCache.historialCarteras = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderCarteraView();
+                }, (error) => {
+                    console.error("Error loading history:", error);
+                });
+            }
+
             // --- Inicialización y Listeners ---
             const renderTrigger = () => renderCarteraView();
             onSnapshot(collection(db, "alumnos"), s => { dataCache.alumnos = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
             onSnapshot(collection(db, "aulas"), s => { dataCache.aulas = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
-            onSnapshot(collection(db, "historialCarteras"), s => { dataCache.historialCarteras = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
             onSnapshot(collection(db, "historialAlumnos"), s => { dataCache.historialAlumnos = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
             onSnapshot(collection(db, "trasladosPendientes"), s => { dataCache.trasladosPendientes = s.docs.map(d => ({id: d.id, ...d.data()})); renderTrigger(); });
             
             const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             const currentMonth = new Date().getMonth();
             meses.forEach((mes, index) => monthFilter.innerHTML += `<option value="${index}">${mes}</option>`);
+            
             const currentYear = new Date().getFullYear();
             for (let i = currentYear - 2; i <= currentYear + 1; i++) yearFilter.innerHTML += `<option value="${i}">${i}</option>`;
+            
             monthFilter.value = currentMonth;
             yearFilter.value = currentYear;
-            
-            [monthFilter, yearFilter, viewCarteraBtn].forEach(el => el.addEventListener('change', renderCarteraView));
+            loadHistoryForYear(currentYear);
+
+            yearFilter.addEventListener('change', (e) => loadHistoryForYear(parseInt(e.target.value)));
+            [monthFilter, viewCarteraBtn].forEach(el => el.addEventListener('change', renderCarteraView));
             viewCarteraBtn.addEventListener('click', renderCarteraView);
             
             aulasContainer.addEventListener('click', e => {

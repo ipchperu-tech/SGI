@@ -1,10 +1,7 @@
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { app } from './firebase-config.js';
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { handleUserLoggedIn, handleUserLoggedOut, hidePreloader, showNotification } from './ui.js';
-
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 // Variable para almacenar la función que detiene el listener y evitar duplicados
 let unsubscribeMaintenanceListener = null;
@@ -30,9 +27,11 @@ export function initAuth() {
                     const systemStatusRef = doc(db, "systemInfo", "status");
                     unsubscribeMaintenanceListener = onSnapshot(systemStatusRef, (statusSnap) => {
                         const statusData = statusSnap.exists() ? statusSnap.data() : { maintenanceMode: false };
+                        // Si el modo mantenimiento está activo y el usuario actual NO es el permitido
                         if (statusData.maintenanceMode === true && auth.currentUser && auth.currentUser.email !== statusData.allowedUser) {
                             console.log("Modo mantenimiento activado. Forzando cierre de sesión.");
                             showNotification("El sistema ha entrado en mantenimiento. Se cerrará tu sesión.", "info", 8000);
+                            
                             // Se espera un momento para que el usuario vea la notificación antes de ser deslogueado
                             setTimeout(() => {
                                 signOut(auth);
@@ -41,9 +40,11 @@ export function initAuth() {
                     });
 
                 } else {
-                    await signOut(auth); // El usuario existe en Auth pero no en la BD de usuarios
+                    // El usuario existe en Auth pero no en la BD de usuarios (inconsistencia)
+                    await signOut(auth); 
                 }
             } else {
+                // Usuario no logueado
                 const systemStatusRef = doc(db, "systemInfo", "status");
                 const systemStatusSnap = await getDoc(systemStatusRef);
                 const systemStatus = systemStatusSnap.exists() ? systemStatusSnap.data() : { maintenanceMode: false };
@@ -59,6 +60,7 @@ export function initAuth() {
 }
 
 export async function login(email, password) {
+    // Verificación previa de mantenimiento antes de intentar el login
     const systemStatusRef = doc(db, "systemInfo", "status");
     const systemStatusSnap = await getDoc(systemStatusRef);
     const systemStatus = systemStatusSnap.exists() ? systemStatusSnap.data() : { maintenanceMode: false };
@@ -73,4 +75,3 @@ export async function login(email, password) {
 export function logout() {
     return signOut(auth);
 }
-

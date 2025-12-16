@@ -160,7 +160,7 @@
                         <p>Trasladando a: <strong id="alumno-name-traslado"></strong></p>
                         <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
                             <p class="text-sm">Desde el aula: <strong id="aula-origen-traslado"></strong></p>
-                            <p class="text-sm">Ciclo actual: <strong id="ciclo-origen-traslado"></strong></p>
+                            <p class="text-sm">Ciclo actual (Según Aula): <strong id="ciclo-origen-traslado"></strong></p>
                         </div>
                         
                         <div id="traslado-type-selector" class="space-y-2">
@@ -362,63 +362,20 @@
     </div>
     
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, Timestamp, addDoc, runTransaction, writeBatch, getDoc, orderBy, limit, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- IMPORTACIONES CENTRALIZADAS (OPTIMIZACIÓN) ---
+        import { db } from "./js/firebase-config.js";
+        import { collection, onSnapshot, query, where, doc, updateDoc, Timestamp, addDoc, runTransaction, writeBatch, getDoc, orderBy, limit, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { safeToDate, showNotification, customConfirm, getQueryParam, logAction } from "./js/utils.js";
 
-        // --- Configuración de Firebase ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
-            authDomain: "bdv3-ipch.firebaseapp.com",
-            projectId: "bdv3-ipch",
-            storageBucket: "bdv3-ipch.firebasestorage.app",
-            messagingSenderId: "993842726107",
-            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
-        };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        // --- Variables de Sesión ---
+        const currentUserEmail = getQueryParam('user') || 'sistema@sgi.com';
+        const currentUserRole = getQueryParam('role');
 
         // --- Cachés de datos en tiempo real ---
         let dataCache = {
             alumnos: [],
             aulas: []
         };
-
-        // --- Ayudantes de Comunicación con el Frame Principal ---
-        function showNotification(message, type = 'success', duration = 5000) {
-            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
-        }
-        function customConfirm(message) {
-            return new Promise((resolve) => {
-                const confirmId = Math.random().toString(36).substring(2, 15);
-                const listener = (event) => {
-                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
-                        window.removeEventListener('message', listener);
-                        resolve(event.data.result);
-                    }
-                };
-                window.addEventListener('message', listener);
-                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
-            });
-        }
-        
-        // --- Funciones Generales y de Ayuda ---
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(param);
-        }
-        const currentUserEmail = getQueryParam('user') || 'sistema@sgi.com';
-        const currentUserRole = getQueryParam('role');
-
-        async function logAction(accion, descripcion) {
-            try {
-                await addDoc(collection(db, 'historialCambios'), {
-                    fecha: Timestamp.now(), 
-                    usuario: currentUserEmail, 
-                    accion: accion, 
-                    descripcion: descripcion
-                });
-            } catch (error) { console.error("Error logging action:", error); }
-        }
 
         async function logStudentHistory(transaction, alumnoId, nombreAlumno, tipoAccion, descripcion, motivo, detalles = {}) {
             const historyRef = doc(collection(db, 'historialAlumnos'));
@@ -449,7 +406,7 @@
             };
         }
 
-        // --- Búsqueda y renderizado de resultados (Ahora desde caché) ---
+        // --- Búsqueda y renderizado de resultados ---
         function searchAlumnosFromCache(term, status = ['Activo']) {
             const lowerCaseTerm = term.toLowerCase();
             return dataCache.alumnos.filter(alumno => {
@@ -499,7 +456,7 @@
             return null;
         }
 
-        // --- Lógica de Inscripción (Ahora desde caché) ---
+        // --- Lógica de Inscripción ---
         let selectedAlumnoInscribir = null;
         setupSearch('search-alumno-inscribir', 'results-inscribir', 'inscribir-details', (alumno) => {
             selectedAlumnoInscribir = alumno;
@@ -565,7 +522,7 @@
                     if (!aula) throw new Error("El aula seleccionada ya no existe o no está disponible.");
                     
                     const aulaRef = doc(db, 'aulas', aula.id);
-                    const aulaDoc = await transaction.get(aulaRef); // Leer dentro de la transacción
+                    const aulaDoc = await transaction.get(aulaRef);
                     const newCount = (aulaDoc.data().cantidadAlumnos || 0) + 1;
                     
                     transaction.update(aulaRef, { cantidadAlumnos: newCount });
@@ -589,7 +546,7 @@
             }
         });
 
-        // --- Lógica de Renovación (Sin cambios, ya era robusta) ---
+        // --- Lógica de Renovación ---
         let selectedAlumnoRenovar = null;
         setupSearch('search-alumno-renovar', 'results-renovar', 'renovar-details', (alumno) => {
             selectedAlumnoRenovar = alumno;
@@ -599,6 +556,7 @@
             document.getElementById('ciclo-nuevo-renovar').textContent = parseInt(alumno.cicloInscrito) + 1;
             document.getElementById('renovar-details').classList.remove('hidden');
         }, ['Activo']);
+        
         document.getElementById('form-renovar').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -642,13 +600,18 @@
             }
         });
 
-        // --- INICIO DE LA CORRECCIÓN: Lógica de Traslado ---
+        // --- Lógica de Traslado (CORREGIDO PARA USAR CICLO DEL AULA) ---
         let selectedAlumnoTraslado = null;
         setupSearch('search-alumno-traslado', 'results-traslado', 'traslado-details', (alumno) => {
             selectedAlumnoTraslado = alumno;
             document.getElementById('alumno-name-traslado').textContent = alumno.nombreCompleto;
             document.getElementById('aula-origen-traslado').textContent = alumno.aulaActual;
-            document.getElementById('ciclo-origen-traslado').textContent = alumno.cicloInscrito; 
+            
+            // CORRECCIÓN: Obtener el ciclo real del aula, no del alumno
+            const aula = dataCache.aulas.find(a => a.codigoAula === alumno.aulaActual);
+            const cicloReal = aula ? aula.ciclo : alumno.cicloInscrito;
+            
+            document.getElementById('ciclo-origen-traslado').textContent = cicloReal; 
             document.getElementById('traslado-details').classList.remove('hidden');
             document.getElementById('tipo-traslado-select').dispatchEvent(new Event('change'));
         }, ['Activo']);
@@ -674,21 +637,23 @@
 
             const tipoTraslado = document.getElementById('tipo-traslado-select').value;
             const aulaDestinoSelect = document.getElementById('aula-destino-select');
-            const cicloActualAlumno = parseInt(selectedAlumnoTraslado.cicloInscrito);
+            
+            // CORRECCIÓN: Usar ciclo del aula como fuente de verdad
+            const cicloActualAlumno = aulaOrigenData ? parseInt(aulaOrigenData.ciclo) : parseInt(selectedAlumnoTraslado.cicloInscrito);
             
             let aulasCompatibles = [];
 
             if (tipoTraslado === 'academico_inmediato') {
                 aulasCompatibles = dataCache.aulas.filter(aula => 
                     aula.tipoAula === aulaOrigenData.tipoAula &&
-                    aula.ciclo === cicloActualAlumno &&
+                    parseInt(aula.ciclo) === cicloActualAlumno &&
                     ["Programada", "En Curso"].includes(aula.estado)
                 );
             } else if (tipoTraslado === 'academico_programado') {
                  aulasCompatibles = dataCache.aulas.filter(aula => 
                     aula.tipoAula === aulaOrigenData.tipoAula &&
-                    aula.ciclo < cicloActualAlumno &&
-                    ["Programada", "En Curso"].includes(aula.estado)
+                    parseInt(aula.ciclo) === cicloActualAlumno &&
+                    ["Programada"].includes(aula.estado)
                 );
             }
             else { // Traslado por cobro
@@ -697,19 +662,19 @@
                     const cicloSiguiente = cicloActualAlumno + 1;
                     aulasCompatibles = dataCache.aulas.filter(aula => 
                         aula.tipoAula === aulaOrigenData.tipoAula &&
-                        (aula.ciclo === cicloActualAlumno || aula.ciclo === cicloSiguiente) &&
+                        (parseInt(aula.ciclo) === cicloActualAlumno || parseInt(aula.ciclo) === cicloSiguiente) &&
                         ["Programada", "En Curso", "En Cobranza"].includes(aula.estado)
                     );
                 } else { // repite
                     aulasCompatibles = dataCache.aulas.filter(aula => 
                         aula.tipoAula === aulaOrigenData.tipoAula &&
-                        (aula.ciclo === cicloActualAlumno || aula.ciclo === cicloActualAlumno - 1) &&
+                        (parseInt(aula.ciclo) === cicloActualAlumno || parseInt(aula.ciclo) === cicloActualAlumno - 1) &&
                         ["Programada", "En Curso", "En Cobranza"].includes(aula.estado)
                     );
                 }
             }
 
-            aulasCompatibles.sort((a, b) => a.ciclo - b.ciclo || a.codigoAula.localeCompare(b.codigoAula));
+            aulasCompatibles.sort((a, b) => parseInt(a.ciclo) - parseInt(b.ciclo) || a.codigoAula.localeCompare(b.codigoAula));
 
             aulaDestinoSelect.innerHTML = '<option value="">Seleccione aula de destino</option>';
             aulasCompatibles.forEach(aula => {
@@ -722,7 +687,6 @@
             });
         }
 
-        // Función para traducir tipos de traslado
         function traducirTipoTraslado(tipo) {
             const traducciones = {
                 'cobro': 'Traslado por Cobro',
@@ -731,7 +695,6 @@
             };
             return traducciones[tipo] || tipo;
         }
-
 
         document.getElementById('form-traslado').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -774,9 +737,11 @@
                     const alumnoData = alumnoDoc.data();
                     
                     const aulaOrigen = dataCache.aulas.find(a => a.codigoAula === alumnoData.aulaActual);
-                    if (!aulaOrigen) throw new Error("El aula de origen del alumno es inválida.");
-                    const aulaOrigenRef = doc(db, 'aulas', aulaOrigen.id);
-                    const aulaOrigenDoc = await transaction.get(aulaOrigenRef);
+                    let aulaOrigenRef = null, aulaOrigenDoc = null;
+                    if(aulaOrigen) {
+                        aulaOrigenRef = doc(db, 'aulas', aulaOrigen.id);
+                        aulaOrigenDoc = await transaction.get(aulaOrigenRef);
+                    }
                     
                     let aulaNuevaRef = null;
                     let aulaNuevaDoc = null;
@@ -790,11 +755,14 @@
                     // ================== 2. FASE DE LÓGICA (LOGIC) ==================
                     let cicloDestinoFinal = cicloDestinoCalculado;
                     
+                    // CORRECCIÓN: Usar ciclo del aula origen para cálculos
+                    const cicloOrigenReal = aulaOrigenDoc ? parseInt(aulaOrigenDoc.data().ciclo) : parseInt(alumnoData.cicloInscrito);
+
                     if (tipoTraslado === 'cobro') {
                         const intention = document.querySelector('input[name="trasladoIntention"]:checked').value;
-                        cicloDestinoFinal = intention === 'avanza' ? alumnoData.cicloInscrito + 1 : alumnoData.cicloInscrito;
+                        cicloDestinoFinal = intention === 'avanza' ? cicloOrigenReal + 1 : cicloOrigenReal;
                     } else if (tipoTraslado === 'academico_programado') {
-                        cicloDestinoFinal = alumnoData.cicloInscrito;
+                        cicloDestinoFinal = cicloOrigenReal;
                     }
 
                     const detallesAdicionales = { 
@@ -802,7 +770,7 @@
                         aulaDestino: nuevaAulaCodigo, 
                         cicloDestino: cicloDestinoFinal, 
                         aulaOrigen: alumnoData.aulaActual, 
-                        cicloOrigen: alumnoData.cicloInscrito
+                        cicloOrigen: cicloOrigenReal // Guardamos el ciclo real del aula
                     };
                     if (finalNote !== null) detallesAdicionales.notaFinal = finalNote;
 
@@ -811,8 +779,8 @@
                     await logStudentHistory(transaction, selectedAlumnoTraslado.id, alumnoData.nombreCompleto, tipoAccionTraducido, desc, motivo, detallesAdicionales);
 
                     if (tipoTraslado === 'academico_inmediato') {
-                        if (aulaOrigenDoc.exists()) transaction.update(aulaOrigenRef, { cantidadAlumnos: (aulaOrigenDoc.data().cantidadAlumnos || 1) - 1 });
-                        if (aulaNuevaDoc.exists()) transaction.update(aulaNuevaRef, { cantidadAlumnos: (aulaNuevaDoc.data().cantidadAlumnos || 0) + 1 });
+                        if (aulaOrigenDoc && aulaOrigenDoc.exists()) transaction.update(aulaOrigenRef, { cantidadAlumnos: Math.max(0, (aulaOrigenDoc.data().cantidadAlumnos || 1) - 1) });
+                        if (aulaNuevaDoc && aulaNuevaDoc.exists()) transaction.update(aulaNuevaRef, { cantidadAlumnos: (aulaNuevaDoc.data().cantidadAlumnos || 0) + 1 });
                         transaction.update(alumnoRef, { aulaActual: nuevaAulaCodigo, cicloInscrito: cicloDestinoFinal });
                     } else { 
                         const trasladoPendienteRef = doc(collection(db, 'trasladosPendientes'));
@@ -822,7 +790,7 @@
                             alumnoId: selectedAlumnoTraslado.id,
                             nombreAlumno: alumnoData.nombreCompleto,
                             aulaOrigen: alumnoData.aulaActual,
-                            cicloOrigen: alumnoData.cicloInscrito,
+                            cicloOrigen: cicloOrigenReal, // Usamos ciclo real
                             aulaDestino: nuevaAulaCodigo,
                             cicloDestino: cicloDestinoFinal,
                             fechaFinAulaDestino: aulaDestinoData ? aulaDestinoData.fechaFin : null,
@@ -835,7 +803,7 @@
                         const nuevoEstadoAula = tipoTraslado === 'cobro' ? "Sin aula (Traslado Pendiente)" : "Sin aula (Traslado Programado)";
                         transaction.update(alumnoRef, { aulaActual: nuevoEstadoAula });
                         
-                        if(aulaOrigenDoc.exists()) {
+                        if(aulaOrigenDoc && aulaOrigenDoc.exists()) {
                             transaction.update(aulaOrigenRef, { cantidadAlumnos: Math.max(0, (aulaOrigenDoc.data().cantidadAlumnos || 1) - 1) });
                         }
                     }
@@ -853,9 +821,8 @@
                 submitBtn.textContent = 'Confirmar Traslado';
             }
         });
-        // --- FIN DE LA CORRECCIÓN ---
 
-
+        // --- Funciones para cambio de estado ---
         function setupStatusChange(action) {
             const formId = `form-${action}`;
             let selectedAlumno = null;
@@ -864,6 +831,7 @@
                 document.getElementById(`alumno-name-${action}`).textContent = alumno.nombreCompleto;
                 document.getElementById(`${action}-details`).classList.remove('hidden');
             }, ['Activo']);
+            
             document.getElementById(formId).addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const form = e.target;
@@ -905,16 +873,11 @@
                         transaction.update(alumnoRef, { estado: nuevoEstado, aulaActual: 'Sin aula (Fin de ciclo)' });
                         
                         const desc = `El estado del alumno cambió a '${nuevoEstado}' desde el aula ${alumnoData.aulaActual}.`;
-                        
-                        // ================== INICIO DE LA CORRECCIÓN (Versión Anterior) ==================
-                        // Un "Retiro" o "Pausa" es una acción de SALIDA.
-                        // Solo debe registrar aulaOrigen y cicloOrigen para evitar ambigüedad.
                         const detalles = { 
                             notaFinal: finalNote, 
                             aulaOrigen: alumnoData.aulaActual, 
                             cicloOrigen: alumnoData.cicloInscrito 
                         };
-                        // =================== FIN DE LA CORRECCIÓN ====================
                         
                         await logStudentHistory(transaction, selectedAlumno.id, selectedAlumno.nombreCompleto, nuevoEstado, desc, motivo, detalles);
                     });
@@ -945,13 +908,14 @@
             aulaSelect.innerHTML = '<option>Buscando aulas...</option>';
             
             const aulas = dataCache.aulas.filter(aula => ["Programada", "En Curso"].includes(aula.estado))
-                            .sort((a, b) => a.ciclo - b.ciclo || a.codigoAula.localeCompare(b.codigoAula));
+                            .sort((a, b) => parseInt(a.ciclo) - parseInt(b.ciclo) || a.codigoAula.localeCompare(b.codigoAula));
 
             aulaSelect.innerHTML = '<option value="">Seleccione aula para reincorporar</option>';
             aulas.forEach(aula => {
                 aulaSelect.innerHTML += `<option value="${aula.codigoAula}" data-curso="${aula.tipoAula}" data-ciclo="${aula.ciclo}">${aula.codigoAula} (Ciclo ${aula.ciclo} - ${aula.nombreDocente})</option>`;
             });
         }, ['Pausado', 'Retirado']);
+        
         document.getElementById('form-reincorporar').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -997,6 +961,7 @@
             }
         });
 
+        // --- Lógica de Egreso ---
         let selectedAlumnoEgresar = null;
         setupSearch('search-alumno-egresar', 'results-egresar', 'egresar-details', (alumno) => {
             selectedAlumnoEgresar = alumno;
@@ -1005,6 +970,7 @@
             document.getElementById('ciclo-actual-egresar').textContent = alumno.cicloInscrito || 'N/A';
             document.getElementById('egresar-details').classList.remove('hidden');
         }, ['Activo']);
+        
         document.getElementById('form-egresar').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -1046,6 +1012,7 @@
             }
         });
 
+        // --- Lógica de Reembolso ---
         let selectedAlumnoReembolso = null;
         setupSearch('search-alumno-reembolso', 'results-reembolso', 'reembolso-details', async (alumno) => {
             selectedAlumnoReembolso = alumno;
@@ -1127,6 +1094,7 @@
             }
         });
 
+        // --- Gestión de Vistas ---
         const gestionSelectorScreen = document.getElementById('gestion-selector-screen');
         const gestionSelect = document.getElementById('gestion-select');
         const realizarGestionBtn = document.getElementById('realizar-gestion-btn');
@@ -1135,7 +1103,6 @@
         function showSelectorScreen() {
             formContainers.forEach(container => container.classList.add('hidden'));
             gestionSelectorScreen.classList.remove('hidden');
-            // Resetear todos los formularios al volver a la pantalla de selección
             formContainers.forEach(container => {
                 const form = container.querySelector('form');
                 if (form) form.reset();
@@ -1164,6 +1131,10 @@
             });
             onSnapshot(collection(db, "aulas"), (snapshot) => {
                 dataCache.aulas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // REACTIVIDAD: Si estamos en la pantalla de traslado y hay un alumno seleccionado, actualizar las opciones
+                if (selectedAlumnoTraslado && !document.getElementById('form-container-trasladar').classList.contains('hidden')) {
+                    updateAulaDestinoOptions();
+                }
             });
 
             realizarGestionBtn.addEventListener('click', () => {

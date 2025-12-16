@@ -10,19 +10,18 @@
 </head>
 <body class="bg-gray-100 p-6 md:p-10">
 
-    <h2 class="text-3xl font-bold text-gray-800 mb-6">Modificar Data y Gestiones</h2>
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">Modificar Data</h2>
 
-    <!-- Pantalla de Selección de Gestión -->
+    <!-- Pantalla de Selección -->
     <div id="modification-selector-screen" class="max-w-xl mx-auto card p-8 text-center">
         <h3 id="modification-greeting" class="text-2xl font-bold text-gray-800 mb-2"></h3>
-        <p class="text-gray-600 mb-6">¿Qué deseas modificar o gestionar hoy?</p>
+        <p class="text-gray-600 mb-6">¿Qué datos deseas editar hoy?</p>
         <div class="flex flex-col sm:flex-row items-center gap-4">
             <select id="modification-select" class="w-full p-3 border rounded-md">
                 <option value="usuarios">Modificar Colaborador</option>
                 <option value="docentes">Modificar Docente</option>
                 <option value="alumnos">Modificar Alumno</option>
                 <option value="aulas">Modificar Aula</option>
-                <option value="revertir">Revertir Última Gestión de Alumno</option>
             </select>
             <button id="continue-btn" class="btn-primary font-semibold py-3 px-6 rounded-md w-full sm:w-auto whitespace-nowrap">Continuar</button>
         </div>
@@ -51,85 +50,21 @@
              <input type="text" id="search-aulas" placeholder="Buscar Aula por Código o Docente..." class="w-full p-3 border border-gray-300 rounded-lg shadow-sm mb-6">
             <div id="results-aulas" class="space-y-4"></div>
         </div>
-        <div id="view-revertir" class="modification-view hidden">
-            <input type="text" id="search-revertir" placeholder="Buscar Alumno Activo por Nombre o DNI para revertir gestión..." class="w-full p-3 border border-gray-300 rounded-lg shadow-sm mb-6">
-            <div id="results-revertir" class="space-y-4"></div>
-        </div>
     </div>
 
-
+    <!-- Modal de Edición -->
     <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
         <div class="card p-8 rounded-lg w-full max-w-lg max-h-[90vh] flex flex-col">
             <h3 id="edit-modal-title" class="text-2xl font-bold mb-6">Editar Registro</h3>
             <div id="edit-form-container" class="overflow-y-auto"></div>
         </div>
     </div>
-    
-    <!-- Modal de Reversión -->
-    <div id="revert-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
-        <div class="card p-8 rounded-lg w-full max-w-lg">
-            <h3 class="text-2xl font-bold mb-4 text-orange-600">Revertir Última Gestión</h3>
-            <div id="revert-details-container">
-                <p class="text-gray-600 mb-4">Se ha encontrado la siguiente gestión pendiente para el alumno. Al confirmar, esta acción será anulada y el alumno volverá al estado 'Pendiente' en la cartera de cobranza.</p>
-                <div id="revert-info" class="p-4 bg-orange-50 border border-orange-200 rounded-md space-y-2"></div>
-            </div>
-             <div id="revert-no-action" class="hidden text-center">
-                <i class="fas fa-info-circle text-4xl text-gray-400 mb-4"></i>
-                <p class="font-semibold">No se encontraron gestiones pendientes de "Renovación" o "Traslado por Cobro" para este alumno que puedan ser revertidas.</p>
-            </div>
-            <div class="flex justify-end space-x-4 mt-6">
-                <button type="button" id="cancel-revert-btn" class="bg-gray-200 py-2 px-4 rounded-md">Cancelar</button>
-                <button type="button" id="confirm-revert-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-md">Confirmar Reversión</button>
-            </div>
-        </div>
-    </div>
-
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, Timestamp, addDoc, writeBatch, runTransaction, orderBy, limit, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
-            authDomain: "bdv3-ipch.firebaseapp.com",
-            projectId: "bdv3-ipch",
-            storageBucket: "bdv3-ipch.firebasestorage.app",
-            messagingSenderId: "993842726107",
-            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
-        function safeToDate(firestoreTimestamp) {
-            if (!firestoreTimestamp) return null;
-            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
-            if (typeof firestoreTimestamp === 'string') {
-                const date = new Date(firestoreTimestamp);
-                if (!isNaN(date)) return date;
-            }
-            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
-            return null;
-        }
-
-        function showNotification(message, type = 'success', duration = 5000) {
-            window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
-        }
-        function customConfirm(message) {
-            return new Promise((resolve) => {
-                const confirmId = Math.random().toString(36).substring(2, 15);
-                const listener = (event) => {
-                    if (event.data.type === 'confirm-result' && event.data.confirmId === confirmId) {
-                        window.removeEventListener('message', listener);
-                        resolve(event.data.result);
-                    }
-                };
-                window.addEventListener('message', listener);
-                window.parent.postMessage({ type: 'show-confirm', message, confirmId }, '*');
-            });
-        }
+        import { db, auth } from "./js/firebase-config.js";
+        import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { collection, query, where, getDocs, doc, updateDoc, Timestamp, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { safeToDate, showNotification, customConfirm, logAction } from "./js/utils.js";
         
         document.addEventListener('DOMContentLoaded', () => {
             const selectorScreen = document.getElementById('modification-selector-screen');
@@ -137,32 +72,17 @@
             const modificationSelect = document.getElementById('modification-select');
             const continueBtn = document.getElementById('continue-btn');
             const backToSelectorBtn = document.getElementById('back-to-selector-btn');
-
             const modal = document.getElementById('edit-modal');
             const modalTitle = document.getElementById('edit-modal-title');
             const formContainer = document.getElementById('edit-form-container');
-            const revertModal = document.getElementById('revert-modal');
             
-            let dataCache = {
-                usuarios: [], docentes: [], alumnos: [], aulas: [], 
-                historialAlumnos: [], trasladosPendientes: []
-            };
+            let dataCache = { usuarios: [], docentes: [], alumnos: [], aulas: [] };
             let originalDataForLog = {};
-            let originalNameForSync = '';
             
-            const currentUserEmail = new URLSearchParams(window.location.search).get('user') || 'sistema@sgi.com';
             const userName = new URLSearchParams(window.location.search).get('userName') || 'Colaborador';
             document.getElementById('modification-greeting').textContent = `Hola, ${userName.split(' ')[0]}!`;
 
-            async function logAction(action, description) {
-                try {
-                    await addDoc(collection(db, 'historialCambios'), {
-                        fecha: Timestamp.now(), usuario: currentUserEmail, accion: action, descripcion: description
-                    });
-                } catch (error) { console.error("Error logging action:", error); }
-            }
-
-            // --- Lógica de UI Principal ---
+            // --- UI Logic ---
             function showView(viewName) {
                 selectorScreen.classList.add('hidden');
                 viewsContainer.classList.remove('hidden');
@@ -174,7 +94,6 @@
             function showSelector() {
                 viewsContainer.classList.add('hidden');
                 selectorScreen.classList.remove('hidden');
-                // Limpiar búsquedas al volver
                 document.querySelectorAll('.modification-view input[type="text"]').forEach(input => input.value = '');
                 document.querySelectorAll('[id^="results-"]').forEach(container => container.innerHTML = '');
             }
@@ -182,7 +101,7 @@
             continueBtn.addEventListener('click', () => showView(modificationSelect.value));
             backToSelectorBtn.addEventListener('click', showSelector);
 
-            // --- Lógica de Búsqueda Genérica ---
+            // --- Búsqueda ---
             function setupSearch(collectionName, searchInputId, resultsContainerId) {
                 const searchInput = document.getElementById(searchInputId);
                 const resultsContainer = document.getElementById(resultsContainerId);
@@ -195,10 +114,7 @@
                     if (term.length < 3) return;
 
                     searchTimeout = setTimeout(() => {
-                        const dataSource = collectionName === 'revertir' ? dataCache.alumnos : dataCache[collectionName];
-                        
-                        const results = dataSource.filter(item => {
-                            if (collectionName === 'revertir') return item.estado === 'Activo' && (item.nombreCompleto.toLowerCase().includes(term) || (item.documentoIdentidad && item.documentoIdentidad.includes(term)));
+                        const results = dataCache[collectionName].filter(item => {
                             const fields = {
                                 usuarios: ['nombreCompleto', 'email', 'documentoIdentidad'],
                                 docentes: ['nombreCompleto', 'documentoIdentidad', 'email'],
@@ -224,15 +140,11 @@
                                     <button data-id="${item.id}" data-collection="usuarios" class="edit-btn btn-primary py-1 px-3 rounded-md text-sm">Editar</button>
                                     <button data-email="${item.email}" class="reset-password-btn bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-sm">Resetear Contraseña</button>
                                 </div>`;
-                            } else if (collectionName === 'revertir') {
-                                content = `<div><p class="font-bold">${item.nombreCompleto}</p><p class="text-sm text-gray-500">${item.aulaActual || ''}</p></div>
-                                <button data-id="${item.id}" class="revert-btn bg-orange-500 hover:bg-orange-600 text-white font-semibold py-1 px-3 rounded-md text-sm">Revertir Gestión</button>`;
                             } else {
                                 const mainField = item.nombreCompleto || item.codigoAula;
                                 const subField = item.email || item.nombreDocente;
-                                let finalCollectionName = collectionName === 'revertir' ? 'alumnos' : collectionName;
                                 content = `<div><p class="font-bold">${mainField}</p><p class="text-sm text-gray-500">${subField || ''}</p></div>
-                                <button data-id="${item.id}" data-collection="${finalCollectionName}" class="edit-btn btn-primary py-1 px-3 rounded-md text-sm">Editar</button>`;
+                                <button data-id="${item.id}" data-collection="${collectionName}" class="edit-btn btn-primary py-1 px-3 rounded-md text-sm">Editar</button>`;
                             }
                             card.innerHTML = content;
                             resultsContainer.appendChild(card);
@@ -245,19 +157,17 @@
             setupSearch('docentes', 'search-docentes', 'results-docentes');
             setupSearch('alumnos', 'search-alumnos', 'results-alumnos');
             setupSearch('aulas', 'search-aulas', 'results-aulas');
-            setupSearch('revertir', 'search-revertir', 'results-revertir');
 
-            // --- Lógica de Acciones (Editar, Resetear, Revertir) ---
+            // --- Acciones ---
             document.body.addEventListener('click', async (e) => {
                 const button = e.target.closest('button');
                 if (!button) return;
 
                 const { id, collection, email } = button.dataset;
-                const finalCollection = collection === 'revertir' ? 'alumnos' : collection;
 
                 if (button.classList.contains('edit-btn')) {
-                    const record = dataCache[finalCollection].find(item => item.id === id);
-                    if(record) openEditModal(finalCollection, id, record);
+                    const record = dataCache[collection].find(item => item.id === id);
+                    if(record) openEditModal(collection, id, record);
                 } else if (button.classList.contains('reset-password-btn')) {
                     const confirmed = await customConfirm(`¿Enviar correo de restablecimiento de contraseña a ${email}?`);
                     if (confirmed) {
@@ -269,9 +179,6 @@
                             showNotification(`Error: ${error.message}`, 'error');
                         }
                     }
-                } else if (button.classList.contains('revert-btn')) {
-                    const alumno = dataCache.alumnos.find(item => item.id === id);
-                    if(alumno) openRevertModal(alumno);
                 }
             });
 
@@ -311,7 +218,6 @@
 
             async function openEditModal(collectionName, id, data) {
                 modalTitle.textContent = `Editar ${collectionName.slice(0, -1)}`;
-                originalNameForSync = data.nombreCompleto || '';
                 originalDataForLog = data;
 
                 let formHTML = `<form id="edit-form" data-id="${id}" data-collection="${collectionName}" class="space-y-4">`;
@@ -416,147 +322,30 @@
                 if(collectionName === 'aulas'){
                     const diasSeleccionados = Array.from(form.querySelectorAll('input[name="frecuencia_dia"]:checked')).map(cb => cb.value);
                     updatePayload.frecuencia = diasSeleccionados.join(', ');
-                    
                     updatePayload.horario = `${document.getElementById('start-hour-edit').value}:${document.getElementById('start-minute-edit').value} ${document.getElementById('start-ampm-edit').value} - ${document.getElementById('end-hour-edit').value}:${document.getElementById('end-minute-edit').value} ${document.getElementById('end-ampm-edit').value}`;
-                    
                     if (updatePayload.fechaInicio) updatePayload.fechaInicio = Timestamp.fromDate(new Date(updatePayload.fechaInicio + 'T00:00:00'));
                     if (updatePayload.fechaFin) updatePayload.fechaFin = Timestamp.fromDate(new Date(updatePayload.fechaFin + 'T00:00:00'));
-
                     delete updatePayload.frecuencia_dia;
                 }
-
 
                 try {
                     const docRef = (collectionName === 'usuarios') ? doc(db, collectionName, originalDataForLog.email) : doc(db, collectionName, id);
                     await updateDoc(docRef, updatePayload);
-                    
                     showNotification('¡Registro actualizado!', 'success');
                     modal.classList.add('hidden');
                     const currentView = document.querySelector('.modification-view:not(.hidden)');
-                    if(currentView) {
-                        currentView.querySelector('input[type="text"]').dispatchEvent(new Event('input'));
-                    }
+                    if(currentView) currentView.querySelector('input[type="text"]').dispatchEvent(new Event('input'));
                 } catch (error) {
                     showNotification("Error al actualizar el registro: " + error.message, 'error');
                 }
             }
-            
-            // --- Lógica de Reversión ---
-            const revertInfoContainer = document.getElementById('revert-info');
-            const revertDetailsContainer = document.getElementById('revert-details-container');
-            const revertNoActionContainer = document.getElementById('revert-no-action');
-            const confirmRevertBtn = document.getElementById('confirm-revert-btn');
-            let selectedStudentForRevert = null;
-            let actionToRevert = null;
 
-            function openRevertModal(alumno) {
-                selectedStudentForRevert = alumno;
-                actionToRevert = null;
-                revertInfoContainer.innerHTML = '<div class="loader"></div>';
-                confirmRevertBtn.style.display = 'none';
-                revertDetailsContainer.style.display = 'block';
-                revertNoActionContainer.classList.add('hidden');
-                revertModal.classList.remove('hidden');
-                revertModal.classList.add('flex');
-
-                const nextCycle = (parseInt(alumno.cicloInscrito) || 0) + 1;
-
-                const trasladoPendiente = dataCache.trasladosPendientes.find(t => t.alumnoId === alumno.id && t.estado === "Pendiente");
-                if (trasladoPendiente) {
-                    actionToRevert = { type: 'Traslado por Cobro', data: trasladoPendiente, id: trasladoPendiente.id };
-                } else {
-                    const renovaciones = dataCache.historialAlumnos
-                        .filter(h => h.alumnoId === alumno.id && h.tipoAccion === "Renovación" && h.detalles.ciclo === nextCycle)
-                        .sort((a, b) => b.fecha.toMillis() - a.fecha.toMillis());
-                    if (renovaciones.length > 0) {
-                        actionToRevert = { type: 'Renovación', data: renovaciones[0], id: renovaciones[0].id };
-                    }
-                }
-
-                if (actionToRevert) {
-                    const d = actionToRevert.data.detalles || actionToRevert.data.paymentDetails || {};
-                    const fechaAccion = safeToDate(actionToRevert.data.fecha || actionToRevert.data.fechaCreacion);
-                    revertInfoContainer.innerHTML = `
-                        <p><strong>Alumno:</strong> ${alumno.nombreCompleto}</p>
-                        <p><strong>Acción a Revertir:</strong> <span class="font-bold text-orange-700">${actionToRevert.type}</span></p>
-                        <p><strong>Fecha Original:</strong> ${fechaAccion ? fechaAccion.toLocaleDateString('es-PE') : 'N/A'}</p>
-                        <p><strong>Monto Pagado Asociado:</strong> S/ ${(d.montoPagado || 0).toFixed(2)}</p>
-                        <p><strong>Destino:</strong> ${d.aulaDestino || actionToRevert.data.aulaOrigen || 'Misma Aula'}</p>
-                    `;
-                    confirmRevertBtn.style.display = 'block';
-                } else {
-                    revertDetailsContainer.style.display = 'none';
-                    revertNoActionContainer.classList.remove('hidden');
-                }
-            }
-            document.getElementById('cancel-revert-btn').addEventListener('click', () => revertModal.classList.add('hidden'));
-            
-            confirmRevertBtn.addEventListener('click', async () => {
-                if (!selectedStudentForRevert || !actionToRevert) return;
-                
-                const confirmed = await customConfirm(`¿Confirmas la anulación de la gestión "${actionToRevert.type}" para ${selectedStudentForRevert.nombreCompleto}?`);
-                if (!confirmed) return;
-
-                confirmRevertBtn.disabled = true;
-
-                try {
-                    await runTransaction(db, async (transaction) => {
-                        const studentRef = doc(db, "alumnos", selectedStudentForRevert.id);
-                        const studentDoc = await transaction.get(studentRef);
-                        if (!studentDoc.exists()) throw new Error("Alumno no encontrado para revertir.");
-
-                        const revertDesc = `Anulación manual de '${actionToRevert.type}'.`;
-                        const revertMotivo = 'Corrección administrativa.';
-                        await logAction("Anulación de Gestión", `Se revirtió '${actionToRevert.type}' para ${selectedStudentForRevert.nombreCompleto}.`);
-
-                        if (actionToRevert.type === 'Renovación') {
-                            transaction.delete(doc(db, 'historialAlumnos', actionToRevert.id));
-                        } else if (actionToRevert.type === 'Traslado por Cobro') {
-                            const aulaOrigen = dataCache.aulas.find(a => a.codigoAula === actionToRevert.data.aulaOrigen);
-                            if (aulaOrigen) {
-                                const aulaOrigenRef = doc(db, "aulas", aulaOrigen.id);
-                                const aulaOrigenDoc = await transaction.get(aulaOrigenRef);
-                                if (aulaOrigenDoc.exists()) {
-                                    transaction.update(aulaOrigenRef, { cantidadAlumnos: (aulaOrigenDoc.data().cantidadAlumnos || 0) + 1 });
-                                }
-                            }
-                            
-                            transaction.update(studentRef, { aulaActual: actionToRevert.data.aulaOrigen });
-                            transaction.delete(doc(db, 'trasladosPendientes', actionToRevert.id));
-                            
-                            // También eliminar el historial de pago asociado si existe
-                            const q = query(collection(db, "historialAlumnos"), 
-                                where("alumnoId", "==", selectedStudentForRevert.id), 
-                                where("tipoAccion", "==", "Traslado por Cobro"), 
-                                orderBy("fecha", "desc"), 
-                                limit(1));
-                            const historySnap = await getDocs(q);
-                            if(!historySnap.empty) {
-                                transaction.delete(historySnap.docs[0].ref);
-                            }
-                        }
-                    });
-
-                    showNotification('¡Gestión revertida exitosamente!', 'success');
-                    revertModal.classList.add('hidden');
-                    document.getElementById('search-revertir').dispatchEvent(new Event('input'));
-                } catch (error) {
-                    showNotification(`Error al revertir la gestión: ${error.message}`, 'error');
-                    console.error(error);
-                } finally {
-                    confirmRevertBtn.disabled = false;
-                }
-            });
-
-
-            // --- Listeners en Tiempo Real ---
-            const collectionsToListen = ['usuarios', 'docentes', 'alumnos', 'aulas', 'historialAlumnos', 'trasladosPendientes'];
+            const collectionsToListen = ['usuarios', 'docentes', 'alumnos', 'aulas'];
             collectionsToListen.forEach(name => {
                 onSnapshot(collection(db, name), s => { 
                     dataCache[name] = s.docs.map(d => ({id:d.id, ...d.data()})); 
                 });
             });
-
         });
     </script>
 </body>

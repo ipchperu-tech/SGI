@@ -66,36 +66,9 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, query, where, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
-          authDomain: "bdv3-ipch.firebaseapp.com",
-          projectId: "bdv3-ipch",
-          storageBucket: "bdv3-ipch.firebasestorage.app",
-          messagingSenderId: "993842726107",
-          appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        function safeToDate(firestoreTimestamp) {
-            if (!firestoreTimestamp) return null;
-            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
-            if (typeof firestoreTimestamp === 'string') {
-                const date = new Date(firestoreTimestamp);
-                if (!isNaN(date)) return date;
-            }
-            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
-            return null;
-        }
-
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(param);
-        }
+        import { db } from "./js/firebase-config.js"; // Importamos la instancia configurada con persistencia
+        import { collection, onSnapshot, query, where, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { safeToDate, getQueryParam } from "./js/utils.js"; // Importamos utilidades centralizadas
 
         document.addEventListener('DOMContentLoaded', () => {
             const greetingEl = document.getElementById('greeting');
@@ -122,47 +95,51 @@
             function updateDateTime() {
                 const now = new Date();
                 const timeZone = 'America/Lima';
-                
                 const timeOptions = { timeZone: timeZone, hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' };
                 const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timeZone };
-
                 timeEl.textContent = now.toLocaleTimeString('es-ES', timeOptions);
                 dateEl.textContent = now.toLocaleDateString('es-ES', dateOptions);
             }
             setInterval(updateDateTime, 1000);
             updateDateTime();
 
+            // Optimización: Escuchar solo tareas pendientes limitadas a las 10 más recientes
             const qTasks = query(
                 collection(db, "seguimientos"), 
                 where("estado", "==", "Pendiente"),
+                orderBy("fechaSeguimiento", "asc"), // Ordenar por fecha de vencimiento más próxima
                 limit(10)
             );
+            
             onSnapshot(qTasks, (snapshot) => {
                 tasksLoader.style.display = 'none';
                 if (snapshot.empty) {
                     tasksContainer.innerHTML = '<p class="text-center text-gray-500 text-sm py-4">No hay seguimientos pendientes.</p>';
                     return;
                 }
-                const docs = snapshot.docs.map(doc => doc.data());
-                docs.sort((a, b) => safeToDate(a.fechaSeguimiento) - safeToDate(b.fechaSeguimiento));
-                tasksContainer.innerHTML = docs.map(data => {
+                
+                tasksContainer.innerHTML = snapshot.docs.map(doc => {
+                    const data = doc.data();
                     const fecha = safeToDate(data.fechaSeguimiento)?.toLocaleDateString('es-ES') || 'Fecha inválida';
                     return `
-                        <div class="p-3 bg-gray-50 rounded-md border">
-                            <p class="font-semibold text-sm">${data.nombreAlumno}</p>
-                            <p class="text-xs text-gray-600">${data.descripcion}</p>
-                            <p class="text-xs text-gray-400 text-right mt-1">Registrado: ${fecha}</p>
+                        <div class="p-3 bg-gray-50 rounded-md border hover:bg-gray-100 transition-colors">
+                            <div class="flex justify-between items-start">
+                                <p class="font-semibold text-sm text-gray-800">${data.nombreAlumno}</p>
+                                <span class="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100">${fecha}</span>
+                            </div>
+                            <p class="text-xs text-gray-600 mt-1 line-clamp-2" title="${data.descripcion}">${data.descripcion}</p>
+                            <p class="text-[10px] text-gray-400 text-right mt-1">Por: ${data.usuarioCreador || 'Sistema'}</p>
                         </div>
                     `;
                 }).join('');
             });
 
+            // Optimización: Consultar aulas que vencen pronto (Rango de 7 días)
             const today = new Date();
             today.setHours(0,0,0,0);
             const sevenDaysFromNow = new Date();
             sevenDaysFromNow.setDate(today.getDate() + 7);
             sevenDaysFromNow.setHours(23,59,59,999);
-
 
             const qAulas = query(
                 collection(db, "aulas"),
@@ -170,29 +147,34 @@
                 where("fechaFin", "<=", Timestamp.fromDate(sevenDaysFromNow)),
                 orderBy("fechaFin", "asc")
             );
+            
             onSnapshot(qAulas, (snapshot) => {
                 aulasLoader.style.display = 'none';
                 if (snapshot.empty) {
                     aulasContainer.innerHTML = '<p class="text-center text-gray-500 text-sm py-4">No hay aulas finalizando en los próximos 7 días.</p>';
                     return;
                 }
+                
                 aulasContainer.innerHTML = snapshot.docs.map(doc => {
                     const data = doc.data();
                     const fecha = safeToDate(data.fechaFin)?.toLocaleDateString('es-ES') || 'Fecha inválida';
                     
-                    let docentesHTML = `<p class="text-xs text-gray-600">Docente: ${data.nombreDocente}</p>`;
+                    let docentesHTML = `<p class="text-xs text-gray-600 truncate">Docente: ${data.nombreDocente}</p>`;
                     if (data.docenteApoyo) {
-                        docentesHTML += `<p class="text-xs text-gray-500 italic">Apoyo: ${data.docenteApoyo}</p>`;
+                        docentesHTML += `<p class="text-xs text-gray-500 italic truncate">Apoyo: ${data.docenteApoyo}</p>`;
                     }
 
                     return `
-                        <div class="p-3 bg-gray-50 rounded-md border">
-                            <div class="flex justify-between items-center">
-                                <p class="font-semibold text-sm text-red-600">${data.codigoAula}</p>
-                                <p class="text-xs font-bold text-gray-700">Finaliza: ${fecha}</p>
+                        <div class="p-3 bg-blue-50 rounded-md border border-blue-100 hover:bg-blue-100 transition-colors">
+                            <div class="flex justify-between items-center mb-1">
+                                <p class="font-bold text-sm text-blue-800">${data.codigoAula}</p>
+                                <span class="text-xs font-bold text-gray-600 bg-white px-2 py-0.5 rounded border border-gray-200">Fin: ${fecha}</span>
                             </div>
                             ${docentesHTML}
-                            <p class="text-xs text-gray-600">Alumnos: ${data.cantidadAlumnos || 0}</p>
+                            <div class="flex justify-between items-center mt-2">
+                                <span class="text-xs text-gray-500">Ciclo ${data.ciclo}</span>
+                                <span class="text-xs font-semibold text-gray-700"><i class="fas fa-users mr-1"></i>${data.cantidadAlumnos || 0}</span>
+                            </div>
                         </div>
                     `;
                 }).join('');

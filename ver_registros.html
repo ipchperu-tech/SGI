@@ -8,83 +8,31 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Estilo inspirado en Google Material Design */
         :root {
-            --brand-color: #ef4444; /* red-500 */
-            --brand-color-light: #fee2e2; /* red-100 */
-            --text-primary: #1f2937; /* Gray-800 */
-            --text-secondary: #6b7280; /* Gray-500 */
+            --brand-color: #ef4444; 
+            --brand-color-light: #fee2e2;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
             --surface-background: #ffffff;
-            --page-background: #f9fafb; /* Gray-50 */
+            --page-background: #f9fafb;
         }
-
-        body {
-            background-color: var(--page-background);
-            color: var(--text-primary);
-            font-family: 'Roboto', sans-serif; /* Google Font */
-        }
-
-        /* Tipografía de Google Fonts */
+        body { background-color: var(--page-background); color: var(--text-primary); font-family: 'Roboto', sans-serif; }
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-
-        .card {
-            background-color: var(--surface-background);
-            border-radius: 0.75rem; /* Esquinas más redondeadas */
-            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            border: 1px solid #e5e7eb; /* Gray-200 */
-        }
-        
-        .tab-btn {
-            padding: 1rem 1.5rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s ease-in-out;
-        }
-        .tab-btn.active, .tab-btn:hover {
-            color: var(--brand-color);
-        }
-        .tab-btn.active {
-            border-bottom-color: var(--brand-color);
-        }
-
-        input[type="text"], select {
-            border-radius: 0.5rem;
-            border-color: #d1d5db; /* Gray-300 */
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        input[type="text"]:focus, select:focus {
-            border-color: var(--brand-color);
-            box-shadow: 0 0 0 2px var(--brand-color-light);
-            outline: none;
-        }
-
-        /* Píldoras de estado */
-        .status-pill {
-            padding: 0.2rem 0.6rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
+        .card { background-color: var(--surface-background); border-radius: 0.75rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); border: 1px solid #e5e7eb; }
+        .tab-btn { padding: 1rem 1.5rem; font-weight: 500; color: var(--text-secondary); border-bottom: 3px solid transparent; transition: all 0.2s ease-in-out; }
+        .tab-btn.active, .tab-btn:hover { color: var(--brand-color); }
+        .tab-btn.active { border-bottom-color: var(--brand-color); }
+        input[type="text"], select { border-radius: 0.5rem; border-color: #d1d5db; transition: border-color 0.2s, box-shadow 0.2s; }
+        input[type="text"]:focus, select:focus { border-color: var(--brand-color); box-shadow: 0 0 0 2px var(--brand-color-light); outline: none; }
+        .status-pill { padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
         .status-green { background-color: #dcfce7; color: #166534; }
         .status-red { background-color: #fee2e2; color: #991b1b; }
         .status-yellow { background-color: #fef9c3; color: #854d0e; }
         .status-blue { background-color: #dbeafe; color: #1e40af; }
         .status-purple { background-color: #ede9fe; color: #5b21b6; }
         .status-gray { background-color: #f3f4f6; color: #4b5563; }
-
-        /* Esqueleto de carga */
-        .skeleton-row td .skeleton {
-            background-color: #e5e7eb;
-            border-radius: 0.25rem;
-            height: 1.25rem;
-            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse {
-            50% { opacity: .5; }
-        }
+        .skeleton-row td .skeleton { background-color: #e5e7eb; border-radius: 0.25rem; height: 1.25rem; animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 50% { opacity: .5; } }
     </style>
 </head>
 <body class="p-6 md:p-8">
@@ -100,7 +48,6 @@
                     <button data-tab="docentes" class="tab-btn active">Docentes</button>
                     <button data-tab="alumnos" class="tab-btn">Alumnos</button>
                     <button data-tab="aulas" class="tab-btn">Aulas</button>
-                    <button data-tab="historial" class="tab-btn">Historial</button>
                 </nav>
             </div>
             
@@ -112,7 +59,7 @@
             <div id="tab-content-alumnos" class="tab-content p-5 hidden">
                 <div class="card border-gray-200 border bg-gray-50 p-4 mb-5">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-                        <input type="text" id="alumnos-search" placeholder="Buscar por nombre, DNI..." class="p-2 border rounded-md lg:col-span-2">
+                        <input type="text" id="alumnos-search" placeholder="Buscar por nombre, DNI o CÓDIGO DE AULA..." class="p-2 border rounded-md lg:col-span-2">
                         <select id="alumnos-curso-filter" class="p-2 border rounded-md"></select>
                         <select id="alumnos-estado-filter" class="p-2 border rounded-md"></select>
                         <button id="clear-alumnos-filters-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md">Limpiar</button>
@@ -133,11 +80,6 @@
                 <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-600"><tr><th class="p-4 font-medium">Código</th><th class="p-4 font-medium">Docente</th><th class="p-4 font-medium">Curso</th><th class="p-4 font-medium">Ciclo</th><th class="p-4 font-medium text-center">Alumnos</th><th class="p-4 font-medium text-center">Trld.</th><th class="p-4 font-medium">Frecuencia</th><th class="p-4 font-medium">Horario</th><th class="p-4 font-medium">Inicio</th><th class="p-4 font-medium">Fin</th><th class="p-4 font-medium">Estado</th></tr></thead><tbody id="aulas-table-body"></tbody></table></div>
             </div>
             
-            <div id="tab-content-historial" class="tab-content p-5 hidden">
-                <div class="mb-4"><input type="text" id="historial-search" placeholder="Buscar por descripción o usuario..." class="w-full md:w-1/3 p-2 border rounded-md"></div>
-                <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-gray-50 text-gray-600"><tr><th class="p-4 font-medium">Fecha</th><th class="p-4 font-medium">Acción</th><th class="p-4 font-medium">Descripción</th><th class="p-4 font-medium">Usuario</th></tr></thead><tbody id="historial-table-body"></tbody></table></div>
-            </div>
-
             <div id="pagination-controls" class="p-4 border-t border-gray-200 flex justify-between items-center"></div>
         </div>
     </main>
@@ -153,28 +95,15 @@
         </div>
     </div>
 
-
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, Timestamp, query, getDocs, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { db, auth } from "./js/firebase-config.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { collection, Timestamp, query, getDocs, where, orderBy, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { safeToDate } from "./js/utils.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDC--X4Z95kEd7nd5X4P6B5yW6HPTiRxpQ",
-            authDomain: "bdv3-ipch.firebaseapp.com",
-            projectId: "bdv3-ipch",
-            storageBucket: "bdv3-ipch.firebasestorage.app",
-            messagingSenderId: "993842726107",
-            appId: "1:993842726107:web:5e9d2b56f29238f2dc38fe"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
         // --- Estado de la aplicación ---
         const state = {
-            dataCache: { docentes: [], alumnos: [], aulas: [], historial: [], trasladosPendientes: [] },
+            dataCache: { docentes: [], alumnos: [], aulas: [], trasladosPendientes: [] },
             precomputed: { alumnosCountByAula: {}, aulasActivasByDocente: {} },
             ui: { currentTab: 'docentes', currentPage: 1, filters: {}, searchTerm: '' },
             isInitialLoad: true
@@ -190,7 +119,6 @@
             docentes: { tbody: document.getElementById('docentes-table-body'), search: document.getElementById('docentes-search') },
             alumnos: { tbody: document.getElementById('alumnos-table-body'), search: document.getElementById('alumnos-search'), estadoFilter: document.getElementById('alumnos-estado-filter'), cursoFilter: document.getElementById('alumnos-curso-filter'), clearFiltersBtn: document.getElementById('clear-alumnos-filters-btn') },
             aulas: { tbody: document.getElementById('aulas-table-body'), search: document.getElementById('aulas-search'), cursoFilter: document.getElementById('aulas-curso-filter'), cicloFilter: document.getElementById('aulas-ciclo-filter'), estadoFilter: document.getElementById('aulas-estado-filter') },
-            historial: { tbody: document.getElementById('historial-table-body'), search: document.getElementById('historial-search') },
         };
         
         // --- Lógica Principal ---
@@ -201,18 +129,15 @@
         }
         
         function startRealtimeListeners() {
-            const collections = ['docentes', 'alumnos', 'aulas', 'historialCambios', 'trasladosPendientes'];
-            const collectionsMapping = {'historialCambios': 'historial'};
+            const collections = ['docentes', 'alumnos', 'aulas', 'trasladosPendientes'];
             
             collections.forEach(colName => {
                 onSnapshot(query(collection(db, colName)), snapshot => {
-                    const cacheKey = collectionsMapping[colName] || colName;
-                    state.dataCache[cacheKey] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    state.dataCache[colName] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     
-                    if (state.isInitialLoad && ['alumnos', 'aulas'].includes(cacheKey)) {
+                    if (state.isInitialLoad && ['alumnos', 'aulas'].includes(colName)) {
                          populateFilters();
                     }
-                    
                     debouncedRender();
                 });
             });
@@ -222,9 +147,7 @@
             clearTimeout(renderDebounceTimer);
             renderDebounceTimer = setTimeout(() => {
                 precomputeData();
-                if (state.isInitialLoad) {
-                    state.isInitialLoad = false;
-                }
+                if (state.isInitialLoad) state.isInitialLoad = false;
                 renderCurrentView();
             }, DEBOUNCE_DELAY);
         }
@@ -247,7 +170,6 @@
         }
 
         // --- Renderizado y UI ---
-        
         function renderCurrentView() {
             const data = getFilteredAndSortedData();
             updatePaginationControls(data.length);
@@ -261,6 +183,8 @@
         
         function renderTable(data) {
             const { currentTab } = state.ui;
+            if(!uiElements[currentTab]) return;
+
             const tbody = uiElements[currentTab].tbody;
 
             if (data.length === 0) {
@@ -269,10 +193,7 @@
                     return;
                 }
                 const colspan = tbody.previousElementSibling.firstElementChild.children.length;
-                tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center p-10 text-gray-500">
-                    <i class="far fa-folder-open text-4xl mb-3"></i><br>
-                    No se encontraron registros.
-                </td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center p-10 text-gray-500"><i class="far fa-folder-open text-4xl mb-3"></i><br>No se encontraron registros.</td></tr>`;
                 return;
             }
 
@@ -309,19 +230,11 @@
                         <td class="p-4 text-gray-600">${fechaFin}</td>
                         <td class="p-4">${renderStatusPill(dynamicState)}</td>
                     `;
-                },
-                historial: item => `
-                    <td class="p-4 text-gray-600">${item.fecha ? safeToDate(item.fecha).toLocaleString('es-ES') : 'N/A'}</td>
-                    <td class="p-4 font-medium">${item.action || item.accion || 'N/A'}</td>
-                    <td class="p-4 text-gray-600">${item.description || item.descripcion || 'N/A'}</td>
-                    <td class="p-4 text-gray-600">${item.usuario || 'N/A'}</td>
-                `
+                }
             };
 
             tbody.innerHTML = data.map(item => `<tr class="border-b border-gray-200 hover:bg-gray-50">${renderers[state.ui.currentTab](item)}</tr>`).join('');
         }
-        
-        // --- Lógica de Filtros y Datos ---
         
         function getFilteredAndSortedData() {
             const { currentTab, searchTerm, filters } = state.ui;
@@ -341,24 +254,28 @@
                 const searchKeys = {
                     docentes: ['nombreCompleto', 'documentoIdentidad', 'email'],
                     alumnos: ['nombreCompleto', 'documentoIdentidad', 'aulaActual'],
-                    aulas: ['codigoAula', 'nombreDocente', 'docenteApoyo'],
-                    historial: ['description', 'descripcion', 'usuario', 'action', 'accion']
+                    aulas: ['codigoAula', 'nombreDocente', 'docenteApoyo']
                 };
-                data = data.filter(item => searchKeys[currentTab].some(key => item[key] && String(item[key]).toLowerCase().includes(searchTerm)));
+                
+                // MEJORA: Búsqueda insensible a mayúsculas/minúsculas más robusta
+                // y trim() para eliminar espacios accidentales.
+                data = data.filter(item => {
+                    return searchKeys[currentTab].some(key => {
+                        const val = item[key];
+                        if (!val) return false;
+                        return String(val).toLowerCase().includes(searchTerm);
+                    });
+                });
             }
             
             const sortConfig = {
                 docentes: (a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto),
                 alumnos: (a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto),
-                aulas: (a, b) => a.codigoAula.localeCompare(b.codigoAula),
-                historial: (a, b) => (safeToDate(b.fecha)?.getTime() || 0) - (safeToDate(a.fecha)?.getTime() || 0),
+                aulas: (a, b) => a.codigoAula.localeCompare(b.codigoAula)
             };
             data.sort(sortConfig[currentTab]);
-            
             return data;
         }
-        
-        // --- Controladores de Eventos ---
         
         function setupEventListeners() {
             uiElements.tabs.forEach(tab => tab.addEventListener('click', handleTabClick));
@@ -404,7 +321,7 @@
         
         function handleSearch(e) {
             state.ui.currentPage = 1;
-            state.ui.searchTerm = e.target.value.toLowerCase();
+            state.ui.searchTerm = e.target.value.toLowerCase().trim(); // Trim añadido
             debouncedRender();
         }
 
@@ -423,18 +340,6 @@
             renderCurrentView();
         }
         
-        // --- Utilidades y Helpers ---
-        function safeToDate(firestoreTimestamp) {
-            if (!firestoreTimestamp) return null;
-            if (typeof firestoreTimestamp.toDate === 'function') return firestoreTimestamp.toDate();
-            if (typeof firestoreTimestamp === 'string') {
-                const date = new Date(firestoreTimestamp);
-                if (!isNaN(date)) return date;
-            }
-            if (typeof firestoreTimestamp.seconds === 'number') return new Date(firestoreTimestamp.seconds * 1000);
-            return null;
-        }
-
         function populateFilters() {
             const cursoMapping = { 'CH-GRL': 'Chino General', 'CH-N': 'Chino para Niños', 'CH-P': 'Chino Privado', 'CH-C': 'Chino Corporativo', 'CI-C': 'Importaciones Corto', 'CI-L': 'Importaciones Largo', 'CE': 'Español' };
             const cursos = [...new Set(state.dataCache.aulas.map(a => a.tipoAula))].sort();
@@ -531,9 +436,10 @@
             modal.classList.add('flex');
 
             try {
+                // AQUÍ USAMOS QUERY DIRECTA (OPTIMIZACIÓN)
                 const [historialSnap, carterasSnap] = await Promise.all([
                     getDocs(query(collection(db, "historialAlumnos"), where("alumnoId", "==", alumnoId), orderBy("fecha", "desc"))),
-                    getDocs(query(collection(db, "historialCarteras"), orderBy("fechaArchivado", "desc")))
+                    getDocs(query(collection(db, "historialCarteras"), orderBy("fechaArchivado", "desc"), limit(20))) 
                 ]);
 
                 const alumno = state.dataCache.alumnos.find(a => a.id === alumnoId);
@@ -553,40 +459,27 @@
                 }
                 transaccionesHTML += '</div>';
                 
-                const allPossibleNotes = [];
-                carterasSnap.forEach(doc => {
-                    const cartera = doc.data();
-                    const alumnoEnCartera = cartera.alumnos.find(a => a.id === alumnoId);
-                    if (alumnoEnCartera && typeof alumnoEnCartera.notaFinal !== 'undefined') {
-                        allPossibleNotes.push({ aula: cartera.datosAula.codigoAula, ciclo: cartera.datosAula.ciclo, nota: alumnoEnCartera.notaFinal, fecha: cartera.fechaArchivado });
-                    }
-                });
-                historialSnap.docs.forEach(doc => {
-                    const historial = doc.data();
-                    if (historial.detalles && typeof historial.detalles.notaFinal !== 'undefined') {
-                        allPossibleNotes.push({ aula: historial.detalles.aula || historial.detalles.aulaOrigen || 'N/A', ciclo: historial.detalles.ciclo || historial.detalles.cicloOrigen || 'N/A', nota: historial.detalles.notaFinal, fecha: historial.fecha });
-                    }
-                });
-
-                const finalNotasMap = new Map();
-                allPossibleNotes.forEach(note => {
-                    const key = `${note.aula}-${note.ciclo}`;
-                    const existing = finalNotasMap.get(key);
-                    if (!existing || safeToDate(note.fecha) > safeToDate(existing.fecha)) {
-                        finalNotasMap.set(key, note);
-                    }
-                });
+                // Lógica de notas
+                let academicoHTML = '<div class="mt-6"><h4 class="font-bold text-lg mb-2">Historial Académico (Últimos ciclos)</h4>';
                 
-                const notas = Array.from(finalNotasMap.values()).filter(n => n.nota !== null).sort((a,b) => safeToDate(b.fecha) - safeToDate(a.fecha));
+                const notasMap = new Map();
+                historialSnap.docs.forEach(doc => {
+                    const h = doc.data();
+                    if(h.detalles && h.detalles.notaFinal !== undefined && h.detalles.notaFinal !== null) {
+                        const key = `${h.detalles.aula || 'N/A'}-${h.detalles.ciclo || 'N/A'}`;
+                        if(!notasMap.has(key)) {
+                            notasMap.set(key, { aula: h.detalles.aula, ciclo: h.detalles.ciclo, nota: h.detalles.notaFinal });
+                        }
+                    }
+                });
 
-                let academicoHTML = '<div class="mt-6"><h4 class="font-bold text-lg mb-2">Historial Académico</h4>';
-                if (notas.length === 0) {
-                    academicoHTML += '<p class="text-gray-500">No hay notas finales registradas.</p>';
+                if (notasMap.size === 0) {
+                    academicoHTML += '<p class="text-gray-500">No hay notas finales registradas en el historial reciente.</p>';
                 } else {
                     academicoHTML += '<table class="w-full text-left text-sm"><thead><tr class="border-b"><th class="py-2">Aula</th><th class="py-2">Ciclo</th><th class="py-2 text-center">Nota Final</th></tr></thead><tbody>';
-                    notas.forEach(n => {
-                        const notaClass = n.nota === null ? '' : (n.nota >= 11 ? 'text-green-600' : 'text-red-600');
-                        academicoHTML += `<tr class="border-b"><td class="py-2">${n.aula}</td><td class="py-2">${n.ciclo}</td><td class="py-2 text-center font-bold ${notaClass}">${n.nota ?? 'N/A'}</td></tr>`;
+                    notasMap.forEach(n => {
+                        const notaClass = n.nota >= 11 ? 'text-green-600' : 'text-red-600';
+                        academicoHTML += `<tr class="border-b"><td class="py-2">${n.aula || 'N/A'}</td><td class="py-2">${n.ciclo || 'N/A'}</td><td class="py-2 text-center font-bold ${notaClass}">${n.nota}</td></tr>`;
                     });
                     academicoHTML += '</tbody></table>';
                 }
@@ -600,7 +493,6 @@
             }
         }
         
-        // --- Inicialización ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 initializeModule();

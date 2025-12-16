@@ -122,15 +122,7 @@
 
     <script type="module">
         // --- Communication helper ---
-        function showNotification(message, type = 'success', duration = 4000) {
-            // Fallback for local testing if window.parent is not listening
-            console.log(`[${type}] ${message}`);
-            try {
-                window.parent.postMessage({ type: 'show-notification', message, messageType: type, duration }, '*');
-            } catch(e) {
-                // ignore
-            }
-        }
+import { showNotification } from "./js/utils.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     const feriados = [
